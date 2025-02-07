@@ -19,8 +19,9 @@ interface User {
   companies: Array<{ name: string, role: string }>;
   digital_identities: Array<{ platform: string, identifier: string }>;
   wallet_addresses: Array<{ blockchain: string, address: string }>;
+  profile_picture_path?: string; // Add profile picture path
+  profile_picture_url?: string; // Add profile picture URL
 }
-
 
 export function UserDirectory() {
   const { user } = usePrivy();
@@ -31,14 +32,13 @@ export function UserDirectory() {
     companies: ""
   });
   const [isLoading, setIsLoading] = useState(true);
-//   const [currentUser, setCurrentUser] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
-    //   setCurrentUser(user.id);
       fetchUsers(user.id);   
     }
   }, [ filters, user]);
+
   const fetchUsers = async (userId : string) => {
     setIsLoading(true); // Start loader
     let query = supabase
@@ -66,7 +66,6 @@ export function UserDirectory() {
 
     const { data, error } = await query;
 
-    
     if (!error && data) {
       const usersWithDetails = await Promise.all(
         data.map(async (user) => {
@@ -80,10 +79,23 @@ export function UserDirectory() {
             .select('id, name')
             .in('id', user.skill_ids);
 
+          let profilePictureUrl = null;
+          if (user.profile_picture_path) {
+            const { data: imageUrl, error: imageError } = await supabase
+              .storage
+              .from("profile-pictures")
+              .getPublicUrl(user.profile_picture_path);
+
+            if (!imageError) {
+              profilePictureUrl = imageUrl.publicUrl;
+            }
+          }
+
           return {
             ...user,
             roles: rolesData,
             skills: skillsData,
+            profile_picture_url: profilePictureUrl,
           };
         })
       );
@@ -134,7 +146,15 @@ export function UserDirectory() {
                   <Card className="p-4 cursor-pointer hover:bg-gray-100">
                     <div className="flex items-start space-x-4">
                       <Avatar>
-                        <AvatarFallback>{user.full_name.charAt(0)}</AvatarFallback>
+                        {user.profile_picture_url ? (
+                          <img
+                            src={user.profile_picture_url}
+                            alt={user.full_name}
+                            className="h-10 w-10 rounded-full"
+                          />
+                        ) : (
+                          <AvatarFallback>{user.full_name.charAt(0)}</AvatarFallback>
+                        )}
                       </Avatar>
                       <div className="space-y-1">
                         <h3 className="font-medium">{user.full_name}</h3>
@@ -147,20 +167,6 @@ export function UserDirectory() {
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogTitle className="sr-only">User Details</DialogTitle>
                   <DialogClose className="p-2 absolute right-2 top-2">
-                    {/* <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="w-6 h-6"
-                    >
-                      <path
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg> */}
                   </DialogClose>
                   <div className="p-4 space-y-4">
                     <h3 className="font-bold text-lg">{user.full_name}</h3>

@@ -1,0 +1,24 @@
+.rotating-sphere-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 400px;
+  }
+  
+  .rotating-sphere {
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, orange, darkorange);
+    border-radius: 50%;
+    animation: rotate 5s linear infinite;
+  }
+  
+  @keyframes rotate {
+    from {
+      transform: rotateY(0deg);
+    }
+    to {
+      transform: rotateY(360deg);
+    }
+  }
+  

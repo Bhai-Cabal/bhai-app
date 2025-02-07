@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { supabase } from "@/lib/supabase";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AccountDialogProps {
@@ -16,7 +16,7 @@ interface AccountDialogProps {
 }
 
 export function AccountDialog({ open, onClose }: AccountDialogProps) {
-  const { user } = usePrivy();
+  const { user, logout } = usePrivy();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState({
@@ -155,6 +155,15 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
               </Button>
             </div>
           </div>
+
+          <Button
+            variant="ghost"
+            className="w-full justify-start px-4 py-3"
+            onClick={() => logout()}
+          >
+            <LogOut className="mr-3 h-8 w-8" />
+            <span className="text-base font-medium">Logout</span>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

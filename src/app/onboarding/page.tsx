@@ -21,6 +21,7 @@ import Image from "next/image";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { LocationInput } from "@/components/LocationInput"; // Import the new LocationInput component
+import { debounce } from "lodash";
 
 const MAX_STEPS = 5;
 
@@ -46,6 +47,7 @@ export default function OnboardingPage() {
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [skillInput, setSkillInput] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
+  const [isUsernameTaken, setIsUsernameTaken] = useState(false);
 
   useEffect(() => {
     const fetchRolesAndSkills = async () => {
@@ -117,6 +119,29 @@ export default function OnboardingPage() {
     }
   }, [ready, authenticated, user?.id, router]);
 
+  const checkUsernameAvailability = debounce(async (username: string) => {
+    const { data, error } = await supabase
+      .from("users")
+      .select("username")
+      .eq("username", username);
+
+    if (error) {
+      console.error("Error checking username:", error);
+    } else {
+      setIsUsernameTaken(data.length > 0);
+    }
+  }, 300);
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const username = e.target.value;
+    form.setValue("username", username);
+    if (username.length >= 3) {
+      checkUsernameAvailability(username);
+    } else {
+      setIsUsernameTaken(false);
+    }
+  };
+
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const values = form.getValues();
@@ -130,6 +155,25 @@ export default function OnboardingPage() {
       const userUUID = uuid();
       let profilePicturePath = null;
 
+      // Save user data first
+      const { error: userError } = await supabase
+        .from("users")
+        .insert({
+          id: userUUID,
+          auth_id: user.id,
+          username: values.username,
+          full_name: values.fullName,
+          bio: values.bio,
+          location: selectedLocation,
+          birthday: values.birthday,
+          crypto_entry_date: values.cryptoEntryDate,
+          profile_completion_percentage: 0, // Will be updated later
+          role_ids: values.roles.map(role => role.id),
+          skill_ids: selectedSkills.map(skill => skill.id)
+        });
+
+      if (userError) throw userError;
+
       // Upload profile picture if provided
       if (values.profilePicture) { 
         const file = values.profilePicture;
@@ -139,6 +183,14 @@ export default function OnboardingPage() {
 
         if (uploadError) throw uploadError;
         profilePicturePath = data.path;
+
+        // Update user record with profile picture path
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({ profile_picture_path: profilePicturePath })
+          .eq("id", userUUID);
+
+        if (updateError) throw updateError;
       }
 
       // Calculate profile completion percentage
@@ -149,25 +201,13 @@ export default function OnboardingPage() {
       if (selectedLocation) completionPercentage += 20;
       if (values.birthday) completionPercentage += 20;
 
-      // Create user record
-      const { error: userError } = await supabase
+      // Update user record with completion percentage
+      const { error: completionError } = await supabase
         .from("users")
-        .insert({
-          id: userUUID,
-          auth_id: user.id,
-          username: values.username,
-          full_name: values.fullName,
-          bio: values.bio,
-          profile_picture_path: profilePicturePath,
-          location: selectedLocation,
-          birthday: values.birthday,
-          crypto_entry_date: values.cryptoEntryDate,
-          profile_completion_percentage: completionPercentage,
-          role_ids: values.roles.map(role => role.id),
-          skill_ids: selectedSkills.map(skill => skill.id)
-        });
+        .update({ profile_completion_percentage: completionPercentage })
+        .eq("id", userUUID);
 
-      if (userError) throw userError;
+      if (completionError) throw completionError;
 
       // Insert data into related tables
       await Promise.all([
@@ -544,8 +584,12 @@ export default function OnboardingPage() {
                       className="text-lg p-6"
                       minLength={3}
                       maxLength={50}
+                      onChange={handleUsernameChange}
                     />
                   </FormControl>
+                  {isUsernameTaken && (
+                    <p className="text-red-500">Username is already taken</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
