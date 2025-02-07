@@ -56,13 +56,13 @@ export function DashboardNav() {
         if (error) {
           console.error("Error fetching profile picture path:", error);
         } else if (data.profile_picture_path) {
-          const { data: imageUrl, error: imageError } = await supabase
+          const { data: imageUrl } = await supabase
             .storage
             .from("profile-pictures")
             .getPublicUrl(data.profile_picture_path);
 
-          if (imageError) {
-            console.error("Error fetching profile picture URL:", imageError);
+          if (!imageUrl) {
+            console.error("Error fetching profile picture URL");
           } else {
             setProfilePictureUrl(imageUrl.publicUrl);
           }

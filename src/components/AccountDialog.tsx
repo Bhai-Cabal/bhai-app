@@ -86,7 +86,7 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
         <div className="space-y-6">
           <div className="flex items-center space-x-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={user?.avatarUrl || ""} />
+              {/* <AvatarImage src={user?.avatarUrl || ""} /> */}
               <AvatarFallback>{profile.full_name?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div>

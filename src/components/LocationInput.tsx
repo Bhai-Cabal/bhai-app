@@ -1,10 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from './ui/input';
 
-export const LocationInput = ({ selectedLocation, setSelectedLocation }) => {
+interface LocationInputProps {
+  selectedLocation: string;
+  setSelectedLocation: (location: string) => void;
+}
+
+interface LocationResult {
+  place_id: string;
+  display_name: string;
+  type: string;
+}
+
+export const LocationInput: React.FC<LocationInputProps> = ({ selectedLocation, setSelectedLocation }) => {
   const [query, setQuery] = useState(selectedLocation || '');
-  const [results, setResults] = useState([]);
-  const wrapperRef = useRef(null);
+  const [results, setResults] = useState<LocationResult[]>([]);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -17,8 +28,8 @@ export const LocationInput = ({ selectedLocation, setSelectedLocation }) => {
   }, [query, selectedLocation]);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setResults([]);
       }
     };
@@ -31,14 +42,14 @@ export const LocationInput = ({ selectedLocation, setSelectedLocation }) => {
 
   const handleSearch = async () => {
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&addressdetails=1&limit=5`);
-    const data = await response.json();
+    const data: LocationResult[] = await response.json();
     const filteredResults = data.filter(result => 
       result.type === 'administrative' || result.type === 'country'
     );
     setResults(filteredResults);
   };
 
-  const handleSelect = (result) => {
+  const handleSelect = (result: LocationResult) => {
     setQuery(result.display_name);
     setSelectedLocation(result.display_name);
     setResults([]);

@@ -39,7 +39,7 @@ export function UserDirectory() {
     }
   }, [ filters, user]);
 
-  const fetchUsers = async (userId : string) => {
+  const fetchUsers = async (userId: string) => {
     setIsLoading(true); // Start loader
     let query = supabase
       .from("users")
@@ -81,14 +81,12 @@ export function UserDirectory() {
 
           let profilePictureUrl = null;
           if (user.profile_picture_path) {
-            const { data: imageUrl, error: imageError } = await supabase
+            const { data: imageUrl } = await supabase
               .storage
               .from("profile-pictures")
               .getPublicUrl(user.profile_picture_path);
 
-            if (!imageError) {
-              profilePictureUrl = imageUrl.publicUrl;
-            }
+            profilePictureUrl = imageUrl.publicUrl;
           }
 
           return {
@@ -181,7 +179,7 @@ export function UserDirectory() {
                       <ul className="list-disc list-inside">
                         {user.skills?.length > 0 ? (
                           user.skills.map((skill) => (
-                            <li key={skill.id}>{skill.name}</li>
+                            <li key={skill.name}>{skill.name}</li>
                           ))
                         ) : (
                           <li>No skills added.</li>
@@ -193,7 +191,7 @@ export function UserDirectory() {
                       <ul className="list-disc list-inside">
                         {user.roles?.length > 0 ? (
                           user.roles.map((role) => (
-                            <li key={role.id}>{role.name}</li>
+                            <li key={role.name}>{role.name}</li>
                           ))
                         ) : (
                           <li>No roles added.</li>
@@ -205,7 +203,7 @@ export function UserDirectory() {
                       <ul className="list-disc list-inside">
                         {user.companies?.length > 0 ? (
                           user.companies.map((company) => (
-                            <li key={company.id}>
+                            <li key={`${company.name}-${company.role}`}>
                               {company.role} at {company.name}
                             </li>
                           ))

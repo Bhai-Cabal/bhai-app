@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { LocationInput } from "@/components/LocationInput"; // Import the new LocationInput component
 import { debounce } from "lodash";
+import { Role, Skill, Company, DigitalIdentity, WalletAddress } from "@/types/form"; // Import necessary types
 
 const MAX_STEPS = 5;
 
@@ -34,8 +35,8 @@ export default function OnboardingPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [newPlatform, setNewPlatform] = useState('');
   const [newBlockchain, setNewBlockchain] = useState('');
-  const [roles, setRoles] = useState([]);
-  const [skills, setSkills] = useState([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [isSkillDialogOpen, setIsSkillDialogOpen] = useState(false);
   const [newRoleName, setNewRoleName] = useState('');
@@ -43,11 +44,12 @@ export default function OnboardingPage() {
   const [newRoleDescription, setNewRoleDescription] = useState('');
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillDescription, setNewSkillDescription] = useState('');
-  const [skillSuggestions, setSkillSuggestions] = useState([]);
-  const [selectedSkills, setSelectedSkills] = useState([]);
+  const [skillSuggestions, setSkillSuggestions] = useState<Skill[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [isUsernameTaken, setIsUsernameTaken] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
 
   useEffect(() => {
     const fetchRolesAndSkills = async () => {
@@ -459,7 +461,7 @@ export default function OnboardingPage() {
     }
   };
 
-  const handlePlaceChange = (event) => {
+  const handlePlaceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = event.target.value;
 
     if (inputValue.length > 2) { 
@@ -469,7 +471,7 @@ export default function OnboardingPage() {
     }
   };
 
-  const fetchLocationSuggestions = async (input) => {
+  const fetchLocationSuggestions = async (input: string) => {
     const service = new google.maps.places.AutocompleteService();
     const request = {
       input,
@@ -485,7 +487,7 @@ export default function OnboardingPage() {
     });
   };
 
-  const handleSuggestionSelect = (prediction) => {
+  const handleSuggestionSelect = (prediction: google.maps.places.AutocompletePrediction) => {
     const placeId = prediction.place_id;
 
     const request = {
@@ -496,8 +498,10 @@ export default function OnboardingPage() {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     service.getDetails(request, (place, status) => {
       if (status === google.maps.places.PlacesServiceStatus.OK) {
-        setSelectedLocation(place.formatted_address);
-        form.setValue('location', place.formatted_address); 
+        if (place && place.formatted_address) {
+          setSelectedLocation(place.formatted_address);
+          form.setValue('location', place.formatted_address);
+        }
       }
     });
 
@@ -515,7 +519,7 @@ export default function OnboardingPage() {
     fetchSkillSuggestions(value);
   };
 
-  const handleSkillSelect = (skill) => {
+  const handleSkillSelect = (skill: Skill) => {
     if (!selectedSkills.some(s => s.name === skill.name)) {
       setSelectedSkills([...selectedSkills, skill]);
       setSkillSuggestions([]);
@@ -523,7 +527,7 @@ export default function OnboardingPage() {
     }
   };
 
-  const removeSkill = (skill) => {
+  const removeSkill = (skill: Skill) => {
     setSelectedSkills(selectedSkills.filter((s) => s.name !== skill.name));
   };
 
@@ -977,13 +981,13 @@ export default function OnboardingPage() {
                   {/* Role Select */}
                   <FormField
                     control={form.control}
-                    name={`roles.${index}.value`}
+                    name={`roles.${index}`}
                     render={({ field }) => (
                       <FormItem className="w-[200px]">
                         <FormControl>
                           <Select
                             onValueChange={(value) => handleRoleChange(index, value)}
-                            value={field.value}
+                            value={field.value?.name}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select role" />
@@ -1024,24 +1028,17 @@ export default function OnboardingPage() {
             <div className="space-y-4">
               <div className="flex flex-col gap-2 skill-input-container">
                 {/* Skill Input */}
-                <FormField
-                  control={form.control}
-                  name="skillInput"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter skill"
-                          {...field}
-                          value={skillInput}
-                          className="text-lg p-3"
-                          onChange={(e) => handleSkillInputChange(e.target.value)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter skill"
+                      value={skillInput}
+                      className="text-lg p-3"
+                      onChange={(e) => handleSkillInputChange(e.target.value)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
                 {skillSuggestions.length > 0 && (
                   <div className="bg-white border rounded shadow-md">
                     {skillSuggestions.map((skill) => (
