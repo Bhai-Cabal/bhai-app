@@ -4,7 +4,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { v4 as uuid } from 'uuid';
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,26 +20,9 @@ import { Select, SelectContent, SelectTrigger, SelectValue, components, SelectIt
 import Image from "next/image";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { LocationInput } from "@/components/LocationInput"; // Import the new LocationInput component
 
 const MAX_STEPS = 5;
-
-const ROLES = [
-  { value: "technical", label: "Technical" },
-  { value: "product_design", label: "Product Design" },
-  { value: "business_operations", label: "Business Operations" },
-  { value: "content_marketing", label: "Content Marketing" },
-  { value: "investment_advisory", label: "Investment Advisory" },
-  { value: "trading_analytics", label: "Trading & Analytics" },
-];
-
-const SKILLS = [
-  { value: "solidity", label: "Solidity" },
-  { value: "react", label: "React" },
-  { value: "nodejs", label: "Node.js" },
-  { value: "python", label: "Python" },
-  { value: "design", label: "Design" },
-  { value: "marketing", label: "Marketing" },
-];
 
 export default function OnboardingPage() {
   const { ready, authenticated, user } = usePrivy();
@@ -60,6 +43,9 @@ export default function OnboardingPage() {
   const [newRoleDescription, setNewRoleDescription] = useState('');
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillDescription, setNewSkillDescription] = useState('');
+  const [skillSuggestions, setSkillSuggestions] = useState([]);
+  const [selectedSkills, setSelectedSkills] = useState([]);
+  const [skillInput, setSkillInput] = useState("");
 
   useEffect(() => {
     const fetchRolesAndSkills = async () => {
@@ -100,29 +86,6 @@ export default function OnboardingPage() {
     "Optimism",
   ];
 
-  // Sample list of locations
-  const LOCATIONS = [
-    { value: "New York, United States", label: "New York, United States" },
-    { value: "London, United Kingdom", label: "London, United Kingdom" },
-    { value: "Tokyo, Japan", label: "Tokyo, Japan" },
-    { value: "Paris, France", label: "Paris, France" },
-    { value: "Singapore", label: "Singapore" },
-    { value: "Hong Kong", label: "Hong Kong" },
-    { value: "Dubai, United Arab Emirates", label: "Dubai, United Arab Emirates" },
-    { value: "Berlin, Germany", label: "Berlin, Germany" },
-    { value: "Toronto, Canada", label: "Toronto, Canada" },
-    { value: "Sydney, Australia", label: "Sydney, Australia" },
-    { value: "Seoul, South Korea", label: "Seoul, South Korea" },
-    { value: "Mumbai, India", label: "Mumbai, India" },
-    { value: "São Paulo, Brazil", label: "São Paulo, Brazil" },
-    { value: "Amsterdam, Netherlands", label: "Amsterdam, Netherlands" },
-    { value: "Stockholm, Sweden", label: "Stockholm, Sweden" },
-    { value: "Zürich, Switzerland", label: "Zürich, Switzerland" },
-    { value: "Tel Aviv, Israel", label: "Tel Aviv, Israel" },
-    { value: "Shanghai, China", label: "Shanghai, China" },
-    { value: "San Francisco, United States", label: "San Francisco, United States" },
-    { value: "Miami, United States", label: "Miami, United States" },
-  ];
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(formSchema),
@@ -434,10 +397,7 @@ export default function OnboardingPage() {
     form.setValue("skills", [...currentSkills, { value: "", label: "" }]);
   };
 
-  const removeSkill = (index: number) => {
-    const currentSkills = form.getValues("skills");
-    form.setValue("skills", currentSkills.filter((_, i) => i !== index));
-  };
+
  
   const getMaxDate = (): string => {
     const date = new Date();
@@ -500,6 +460,109 @@ export default function OnboardingPage() {
       setIsSkillDialogOpen(false);
     }
   };
+
+  const handlePlaceChange = (event) => {
+    const inputValue = event.target.value;
+
+    if (inputValue.length > 2) { 
+      fetchLocationSuggestions(inputValue);
+    } else {
+      setLocationSuggestions([]); 
+    }
+  };
+
+  const fetchLocationSuggestions = async (input) => {
+    const service = new google.maps.places.AutocompleteService();
+    const request = {
+      input,
+      // componentRestrictions: { country: 'us' }, // Optional country restriction
+    };
+
+    service.getPlacePredictions(request, (predictions, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+        setLocationSuggestions(predictions);
+      } else {
+        setLocationSuggestions([]);
+      }
+    });
+  };
+
+  const handleSuggestionSelect = (prediction) => {
+    const placeId = prediction.place_id;
+
+    const request = {
+      placeId,
+      fields: ['name', 'formatted_address', 'geometry'],
+    };
+
+    const service = new google.maps.places.PlacesService(document.createElement('div'));
+    service.getDetails(request, (place, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK) {
+        setSelectedLocation(place);
+        form.setValue('location', place.formatted_address); 
+      }
+    });
+
+    setLocationSuggestions([]);
+  };
+
+  const handleFormKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+    }
+  };
+
+  const handleSkillInputChange = (value: string) => {
+    setSkillInput(value);
+    fetchSkillSuggestions(value);
+  };
+
+  const handleSkillSelect = (skill: string) => {
+    if (!selectedSkills.includes(skill)) {
+      setSelectedSkills([...selectedSkills, skill]);
+      setSkillSuggestions([]);
+      setSkillInput("");
+    }
+  };
+
+  const removeSkill = (skill: string) => {
+    setSelectedSkills(selectedSkills.filter((s) => s !== skill));
+  };
+
+  const fetchSkillSuggestions = async (input: string) => {
+    if (input.length > 2) {
+      const { data, error } = await supabase
+        .from("skills")
+        .select("name")
+        .ilike("name", `%${input}%`);
+      if (error) {
+        console.error("Error fetching skill suggestions:", error);
+      } else {
+        setSkillSuggestions(data);
+      }
+    } else {
+      setSkillSuggestions([]);
+    }
+  };
+
+  const handleClickOutside = () => {
+    setSkillSuggestions([]);
+    setSkillInput("");
+  };
+
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".skill-input-container")) {
+        handleClickOutside();
+      }
+    };
+
+    document.addEventListener("click", handleClick);
+    return () => {
+      document.removeEventListener("click", handleClick);
+    };
+  }, []);
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -620,23 +683,14 @@ export default function OnboardingPage() {
             <FormField
               control={form.control}
               name="location"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Location</FormLabel>
                   <FormDescription>
-                    Where are you based? Select your city and country
+                    Start typing to get location suggestions
                   </FormDescription>
                   <FormControl>
-                    <Select
-                      options={LOCATIONS}
-                      onChange={(selectedOption: { value: any; }) =>
-                        form.setValue(
-                          "location",
-                          selectedOption?.value || ''
-                        )
-                      }
-                      className="text-lg p-6"
-                    />
+                    <LocationInput />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -847,37 +901,37 @@ export default function OnboardingPage() {
                     name={`digitalIdentities.${index}.platform`}
                     render={({ field }) => (
                       <FormItem className="w-[200px]">
-                        <Select
-                          onValueChange={(value) => handlePlatformChange(index, value)}
-                          value={field.value}
-                        >
-                          <FormControl>
+                        <FormControl>
+                          <Select
+                            onValueChange={(value) => handlePlatformChange(index, value)}
+                            value={field.value}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Select platform" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {PLATFORMS.map((platform) => (
-                              <SelectItem key={platform} value={platform.toLowerCase()}>
-                                {platform}
-                              </SelectItem>
-                            ))}
-                            {/* Input for adding a new platform */}
-                            <div className="py-2">
-                              <Input
-                                placeholder="Add new platform"
-                                value={newPlatform}
-                                onChange={(e) => setNewPlatform(e.target.value)}
-                                className="text-lg p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                              />
-                            </div>
-                            {newPlatform && (
-                              <SelectItem key="new-platform" value={`new-${newPlatform}`}>
-                                Add "{newPlatform}"
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
+                            <SelectContent>
+                              {PLATFORMS.map((platform) => (
+                                <SelectItem key={platform} value={platform.toLowerCase()}>
+                                  {platform}
+                                </SelectItem>
+                              ))}
+                              {/* Input for adding a new platform */}
+                              <div className="py-2">
+                                <Input
+                                  placeholder="Add new platform"
+                                  value={newPlatform}
+                                  onChange={(e) => setNewPlatform(e.target.value)}
+                                  className="text-lg p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                              </div>
+                              {newPlatform && (
+                                <SelectItem key="new-platform" value={`new-${newPlatform}`}>
+                                  Add "{newPlatform}"
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -924,26 +978,26 @@ export default function OnboardingPage() {
                     name={`roles.${index}.value`}
                     render={({ field }) => (
                       <FormItem className="w-[200px]">
-                        <Select
-                          onValueChange={(value) => handleRoleChange(index, value)}
-                          value={field.value}
-                        >
-                          <FormControl>
+                        <FormControl>
+                          <Select
+                            onValueChange={(value) => handleRoleChange(index, value)}
+                            value={field.value}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Select role" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {roles.map((role) => (
-                              <SelectItem key={role.id} value={role.name}>
-                                {role.name}
+                            <SelectContent>
+                              {roles.map((role) => (
+                                <SelectItem key={role.id} value={role.name}>
+                                  {role.name}
+                                </SelectItem>
+                              ))}
+                              <SelectItem key="new-role" value="new-role">
+                                Add New Role
                               </SelectItem>
-                            ))}
-                            <SelectItem key="new-role" value="new-role">
-                              Add New Role
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -966,46 +1020,50 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-4">
-              {form.watch('skills').map((_, index) => (
-                <div key={index} className="flex gap-4 items-start">
-                  {/* Skill Select */}
-                  <FormField
-                    control={form.control}
-                    name={`skills.${index}.value`}
-                    render={({ field }) => (
-                      <FormItem className="w-[200px]">
-                        <Select
-                          onValueChange={(value) => form.setValue(`skills.${index}.value`, value)}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select skill" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {skills.map((skill) => (
-                              <SelectItem key={skill.id} value={skill.name}>
-                                {skill.name}
-                              </SelectItem>
-                            ))}
-                            <SelectItem key="new-skill" value="new-skill">
-                              Add New Skill
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(index)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" onClick={addSkill}>
-                Add Skill
-              </Button>
+              <div className="flex flex-col gap-2 skill-input-container">
+                {/* Skill Input */}
+                <FormField
+                  control={form.control}
+                  name="skillInput"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter skill"
+                          {...field}
+                          value={skillInput}
+                          className="text-lg p-3"
+                          onChange={(e) => handleSkillInputChange(e.target.value)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {skillSuggestions.length > 0 && (
+                  <div className="bg-white border rounded shadow-md">
+                    {skillSuggestions.map((skill) => (
+                      <div
+                        key={skill.name}
+                        className="p-2 cursor-pointer hover:bg-gray-200"
+                        onClick={() => handleSkillSelect(skill.name)}
+                      >
+                        {skill.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                {selectedSkills.map((skill) => (
+                  <div key={skill} className="flex items-center justify-between p-2 border rounded">
+                    <span>{skill}</span>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(skill)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );
@@ -1028,37 +1086,37 @@ export default function OnboardingPage() {
                     name={`walletAddresses.${index}.blockchain`}
                     render={({ field }) => (
                       <FormItem className="w-[200px]">
-                        <Select
-                          onValueChange={(value) => handleBlockchainChange(index, value)}
-                          value={field.value}
-                        >
-                          <FormControl>
+                        <FormControl>
+                          <Select
+                            onValueChange={(value) => handleBlockchainChange(index, value)}
+                            value={field.value}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Select blockchain" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {BLOCKCHAINS.map((blockchain) => (
-                              <SelectItem key={blockchain} value={blockchain.toLowerCase()}>
-                                {blockchain}
-                              </SelectItem>
-                            ))}
-                            {/* Input for adding a new blockchain */}
-                            <div className="py-2">
-                              <Input
-                                placeholder="Add new blockchain"
-                                value={newBlockchain}
-                                onChange={(e) => setNewBlockchain(e.target.value)}
-                                className="text-lg p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                              />
-                            </div>
-                            {newBlockchain && (
-                              <SelectItem key="new-blockchain" value={`new-${newBlockchain}`}>
-                                Add "{newBlockchain}"
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
+                            <SelectContent>
+                              {BLOCKCHAINS.map((blockchain) => (
+                                <SelectItem key={blockchain} value={blockchain.toLowerCase()}>
+                                  {blockchain}
+                                </SelectItem>
+                              ))}
+                              {/* Input for adding a new blockchain */}
+                              <div className="py-2">
+                                <Input
+                                  placeholder="Add new blockchain"
+                                  value={newBlockchain}
+                                  onChange={(e) => setNewBlockchain(e.target.value)}
+                                  className="text-lg p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                              </div>
+                              {newBlockchain && (
+                                <SelectItem key="new-blockchain" value={`new-${newBlockchain}`}>
+                                  Add "{newBlockchain}"
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1105,44 +1163,46 @@ export default function OnboardingPage() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <Form {...form}>
-            <form onSubmit={handleFormSubmit} className="space-y-6">
-              {renderStepContent()}
+          <FormProvider {...form}>
+            <Form {...form}>
+              <form onSubmit={handleFormSubmit} onKeyDown={handleFormKeyDown} className="space-y-6">
+                {renderStepContent()}
 
-              <div className="flex justify-between">
-                {currentStep > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handlePreviousStep}
-                  >
-                    Previous
-                  </Button>
-                )}
-                {currentStep < MAX_STEPS ? (
-                  <Button type="button" onClick={handleNextStep}>
-                    Next
-                  </Button>
-                ) : (
-                    <> </>
-                )}
-                {
-                  currentStep === 5 && (
-                    <Button type="submit" disabled={isLoading} >
-                    {isLoading ? (
-                      <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                      </>
-                    ) : (
-                      'Complete'
-                    )}
+                <div className="flex justify-between">
+                  {currentStep > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handlePreviousStep}
+                    >
+                      Previous
                     </Button>
-                  )
-                }
-              </div>
-            </form>
-          </Form>
+                  )}
+                  {currentStep < MAX_STEPS ? (
+                    <Button type="button" onClick={handleNextStep}>
+                      Next
+                    </Button>
+                  ) : (
+                      <> </>
+                  )}
+                  {
+                    currentStep === 5 && (
+                      <Button type="submit" disabled={isLoading} >
+                      {isLoading ? (
+                        <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                        </>
+                      ) : (
+                        'Complete'
+                      )}
+                      </Button>
+                    )
+                  }
+                </div>
+              </form>
+            </Form>
+          </FormProvider>
         </Card>
       </div>
 
@@ -1227,4 +1287,3 @@ export default function OnboardingPage() {
     </div>
   );
 }
-
