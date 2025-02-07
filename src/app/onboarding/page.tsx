@@ -1155,6 +1155,9 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto">
+        <Button variant="outline" onClick={logout} className="absolute mt-4 ml-[36rem]">
+          Logout
+        </Button>
         <Card className="p-8">
           {error && (
             <Alert variant="destructive" className="mb-6">
@@ -1203,9 +1206,7 @@ export default function OnboardingPage() {
             </Form>
           </FormProvider>
         </Card>
-        <Button variant="outline" onClick={logout} className="mt-4">
-          Logout
-        </Button>
+        
       </div>
 
       {/* Dialog for adding new role */}
