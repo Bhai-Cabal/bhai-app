@@ -27,7 +27,7 @@ import { Role, Skill, Company, DigitalIdentity, WalletAddress } from "@/types/fo
 const MAX_STEPS = 5;
 
 export default function OnboardingPage() {
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, authenticated, user, logout } = usePrivy(); // Add logout to destructuring
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1203,6 +1203,9 @@ export default function OnboardingPage() {
             </Form>
           </FormProvider>
         </Card>
+        <Button variant="outline" onClick={logout} className="mt-4">
+          Logout
+        </Button>
       </div>
 
       {/* Dialog for adding new role */}
