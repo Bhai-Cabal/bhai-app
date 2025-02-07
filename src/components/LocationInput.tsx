@@ -1,26 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from './ui/input';
 
-export const LocationInput = () => {
-  const [query, setQuery] = useState('');
+export const LocationInput = ({ selectedLocation, setSelectedLocation }) => {
+  const [query, setQuery] = useState(selectedLocation || '');
   const [results, setResults] = useState([]);
   const wrapperRef = useRef(null);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      if (query) {
+      if (query && query !== selectedLocation) {
         handleSearch();
       }
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [query]);
+  }, [query, selectedLocation]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setResults([]);
-        setQuery(''); // Clear the input if nothing is selected
       }
     };
 
@@ -41,6 +40,7 @@ export const LocationInput = () => {
 
   const handleSelect = (result) => {
     setQuery(result.display_name);
+    setSelectedLocation(result.display_name);
     setResults([]);
   };
 

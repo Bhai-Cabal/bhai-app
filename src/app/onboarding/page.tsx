@@ -4,7 +4,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { v4 as uuid } from 'uuid';
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useForm, Controller, FormProvider } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { OnboardingFormValues, formSchema } from "@/types/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { checkUserRegistered } from "@/lib/supabase";
-import { Select, SelectContent, SelectTrigger, SelectValue, components, SelectItem } from "@/components/ui/select";
+import { Select, SelectContent, SelectTrigger, SelectValue, SelectItem } from "@/components/ui/select";
 import Image from "next/image";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -35,7 +35,6 @@ export default function OnboardingPage() {
   const [newBlockchain, setNewBlockchain] = useState('');
   const [roles, setRoles] = useState([]);
   const [skills, setSkills] = useState([]);
-  const [newRole, setNewRole] = useState('');
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [isSkillDialogOpen, setIsSkillDialogOpen] = useState(false);
   const [newRoleName, setNewRoleName] = useState('');
@@ -46,6 +45,7 @@ export default function OnboardingPage() {
   const [skillSuggestions, setSkillSuggestions] = useState([]);
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [skillInput, setSkillInput] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
 
   useEffect(() => {
     const fetchRolesAndSkills = async () => {
@@ -85,7 +85,6 @@ export default function OnboardingPage() {
     "Arbitrum",
     "Optimism",
   ];
-
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(formSchema),
@@ -147,7 +146,7 @@ export default function OnboardingPage() {
       if (values.username) completionPercentage += 20;
       if (values.fullName) completionPercentage += 20;
       if (values.bio) completionPercentage += 20;
-      if (values.location) completionPercentage += 20;
+      if (selectedLocation) completionPercentage += 20;
       if (values.birthday) completionPercentage += 20;
 
       // Create user record
@@ -160,10 +159,12 @@ export default function OnboardingPage() {
           full_name: values.fullName,
           bio: values.bio,
           profile_picture_path: profilePicturePath,
-          location: values.location,
+          location: selectedLocation,
           birthday: values.birthday,
           crypto_entry_date: values.cryptoEntryDate,
           profile_completion_percentage: completionPercentage,
+          role_ids: values.roles.map(role => role.id),
+          skill_ids: selectedSkills.map(skill => skill.id)
         });
 
       if (userError) throw userError;
@@ -171,6 +172,10 @@ export default function OnboardingPage() {
       // Insert data into related tables
       await Promise.all([
         ...values.companies.map(async (company) => {
+          // Ensure start_date is before end_date
+          if (company.endDate && new Date(company.startDate) > new Date(company.endDate)) {
+            throw new Error("Start date must be before end date");
+          }
           const { data, error } = await supabase.from("companies").insert({
             name: company.name,
             website: company.website,
@@ -180,8 +185,8 @@ export default function OnboardingPage() {
             user_id: userUUID,
             company_id: data[0].id, 
             role: company.role,
-            start_date: company.startDate,
-            end_date: company.endDate,
+            start_date: company.startDate || null,
+            end_date: company.endDate || null,
             is_current: company.isCurrent
           });
         }),
@@ -198,55 +203,7 @@ export default function OnboardingPage() {
             blockchain: wallet.blockchain,
             address: wallet.address, 
           })
-        ),
-        ...values.roles.map(async (role) => {
-          const { data, error } = await supabase
-            .from("roles")
-            .select("id")
-            .eq("name", role.value);
-          if (error) throw error;
-          if (data.length > 0) {
-            return supabase.from("user_roles").insert({
-              user_id: userUUID,
-              role_id: data[0].id,
-            });
-          } else {
-            const { data: newRoleData, error: newRoleError } = await supabase
-              .from("roles")
-              .insert({ name: role.value })
-              .select();
-            if (newRoleError) throw newRoleError;
-            return supabase.from("user_roles").insert({
-              user_id: userUUID,
-              role_id: newRoleData[0].id,
-            });
-          }
-        }),
-        ...values.skills.map(async (skill) => {
-          const { data, error } = await supabase
-            .from("skills")
-            .select("id")
-            .eq("name", skill.value);
-          if (error) throw error;
-          if (data.length > 0) {
-            return supabase.from("user_skills").insert({
-              user_id: userUUID,
-              skill_id: data[0].id,
-              proficiency_level: 3, // You can adjust the default proficiency level here
-            });
-          } else {
-            const { data: newSkillData, error: newSkillError } = await supabase
-              .from("skills")
-              .insert({ name: skill.value })
-              .select();
-            if (newSkillError) throw newSkillError;
-            return supabase.from("user_skills").insert({
-              user_id: userUUID,
-              skill_id: newSkillData[0].id,
-              proficiency_level: 3, // You can adjust the default proficiency level here
-            });
-          }
-        }),
+        )
       ]);
 
       router.push("/dashboard"); 
@@ -384,7 +341,7 @@ export default function OnboardingPage() {
 
   const addRole = () => {
     const currentRoles = form.getValues("roles");
-    form.setValue("roles", [...currentRoles, { value: "", label: "" }]);
+    form.setValue("roles", [...currentRoles, { id: "", name: "" }]);
   };
 
   const removeRole = (index: number) => {
@@ -394,11 +351,9 @@ export default function OnboardingPage() {
 
   const addSkill = () => {
     const currentSkills = form.getValues("skills");
-    form.setValue("skills", [...currentSkills, { value: "", label: "" }]);
+    form.setValue("skills", [...currentSkills, { id: "", name: "" }]);
   };
 
-
- 
   const getMaxDate = (): string => {
     const date = new Date();
     date.setFullYear(date.getFullYear() - 13); // Minimum age of 13
@@ -412,7 +367,10 @@ export default function OnboardingPage() {
   };
 
   const handleRoleChange = async (index: number, selectedValue: string) => {
-    form.setValue(`roles.${index}.value`, selectedValue);
+    const selectedRole = roles.find(role => role.name === selectedValue);
+    if (selectedRole) {
+      form.setValue(`roles.${index}`, selectedRole);
+    }
 
     // If it's a new role, add it to the roles array
     if (selectedValue.startsWith("new-")) {
@@ -422,7 +380,7 @@ export default function OnboardingPage() {
         console.error("Error adding new role:", error);
       } else {
         setRoles([...roles, data[0]]);
-        setNewRole(""); // Clear the input
+        form.setValue(`roles.${index}`, data[0]);
       }
     }
   };
@@ -498,7 +456,7 @@ export default function OnboardingPage() {
     const service = new google.maps.places.PlacesService(document.createElement('div'));
     service.getDetails(request, (place, status) => {
       if (status === google.maps.places.PlacesServiceStatus.OK) {
-        setSelectedLocation(place);
+        setSelectedLocation(place.formatted_address);
         form.setValue('location', place.formatted_address); 
       }
     });
@@ -517,23 +475,23 @@ export default function OnboardingPage() {
     fetchSkillSuggestions(value);
   };
 
-  const handleSkillSelect = (skill: string) => {
-    if (!selectedSkills.includes(skill)) {
+  const handleSkillSelect = (skill) => {
+    if (!selectedSkills.some(s => s.name === skill.name)) {
       setSelectedSkills([...selectedSkills, skill]);
       setSkillSuggestions([]);
       setSkillInput("");
     }
   };
 
-  const removeSkill = (skill: string) => {
-    setSelectedSkills(selectedSkills.filter((s) => s !== skill));
+  const removeSkill = (skill) => {
+    setSelectedSkills(selectedSkills.filter((s) => s.name !== skill.name));
   };
 
   const fetchSkillSuggestions = async (input: string) => {
     if (input.length > 2) {
       const { data, error } = await supabase
         .from("skills")
-        .select("name")
+        .select("id, name")
         .ilike("name", `%${input}%`);
       if (error) {
         console.error("Error fetching skill suggestions:", error);
@@ -690,7 +648,7 @@ export default function OnboardingPage() {
                     Start typing to get location suggestions
                   </FormDescription>
                   <FormControl>
-                    <LocationInput />
+                    <LocationInput selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1046,7 +1004,7 @@ export default function OnboardingPage() {
                       <div
                         key={skill.name}
                         className="p-2 cursor-pointer hover:bg-gray-200"
-                        onClick={() => handleSkillSelect(skill.name)}
+                        onClick={() => handleSkillSelect(skill)}
                       >
                         {skill.name}
                       </div>
@@ -1056,8 +1014,8 @@ export default function OnboardingPage() {
               </div>
               <div className="space-y-2">
                 {selectedSkills.map((skill) => (
-                  <div key={skill} className="flex items-center justify-between p-2 border rounded">
-                    <span>{skill}</span>
+                  <div key={skill.name} className="flex items-center justify-between p-2 border rounded">
+                    <span>{skill.name}</span>
                     <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(skill)}>
                       <X className="h-4 w-4" />
                     </Button>
