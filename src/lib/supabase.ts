@@ -9,3 +9,25 @@ export const supabase = createClient(
     }
   }
 )
+
+export async function checkUserRegistered(userId: string): Promise<boolean> {
+  try {
+    const data = await supabase
+      .from('users')
+      .select('auth_id')
+      .eq('auth_id', userId)
+  
+    // if (error) {
+    //   console.log('Error checking user registration:', error);
+    //   return false;
+    // }
+    // console.log('Data:', data);
+    if (data.data && data.data.length > 0) {
+      return true;
+    } 
+    return false;
+    
+  } catch (error) {
+    return false;
+  }
+}

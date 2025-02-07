@@ -7,16 +7,25 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { checkUserRegistered } from "@/lib/supabase"; // Import the function to check if the user is registered
 
 export default function LoginPage() {
-  const { login, ready, authenticated } = usePrivy();
+  const { login, ready, authenticated, user } = usePrivy(); // Get the user object from usePrivy
   const router = useRouter();
 
   useEffect(() => {
-    if (ready && authenticated) {
-      router.push("/onboarding");
-    }
-  }, [ready, authenticated, router]);
+    const handleRedirect = async () => {
+      if (ready && authenticated && user) {
+        const isRegistered = await checkUserRegistered(user.id);
+        if (isRegistered) {
+          router.push("/dashboard");
+        } else {
+          router.push("/onboarding");
+        }
+      }
+    };
+    handleRedirect();
+  }, [ready, authenticated, user, router]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

@@ -4,16 +4,22 @@ import { usePrivy } from "@privy-io/react-auth";
 import { Card } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 interface UserProfile {
   username: string;
   full_name: string;
+  bio: string;
   location: string;
-  profile_picture_url: string | null;
+  birthday: string;
+  crypto_entry_date: string;
+  profile_completion_percentage: number;
 }
 
 export default function DashboardPage() {
   const { user } = usePrivy();
+  const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
@@ -21,9 +27,9 @@ export default function DashboardPage() {
       if (!user?.id) return;
 
       const { data, error } = await supabase
-        .from("profiles")
+        .from("users")
         .select("*")
-        .eq("id", user.id)
+        .eq("auth_id", user.id)
         .single();
 
       if (error) {
@@ -36,6 +42,10 @@ export default function DashboardPage() {
 
     fetchProfile();
   }, [user?.id]);
+
+  const handleUpdateProfile = () => {
+    router.push("/dashboard/profile");
+  };
 
   return (
     <div>
@@ -53,8 +63,21 @@ export default function DashboardPage() {
                 <span className="font-medium">Username:</span> @{profile.username}
               </p>
               <p>
+                <span className="font-medium">Bio:</span> {profile.bio}
+              </p>
+              <p>
                 <span className="font-medium">Location:</span> {profile.location}
               </p>
+              <p>
+                <span className="font-medium">Birthday:</span> {profile.birthday}
+              </p>
+              <p>
+                <span className="font-medium">Crypto Entry Date:</span> {profile.crypto_entry_date}
+              </p>
+              <p>
+                <span className="font-medium">Profile Completion:</span> {profile.profile_completion_percentage}%
+              </p>
+              <Button onClick={handleUpdateProfile}>Update Profile</Button>
             </div>
           ) : (
             <p>Loading profile...</p>

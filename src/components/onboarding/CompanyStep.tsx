@@ -13,7 +13,7 @@ import { X } from "lucide-react";
 interface CompanyStepProps {
   form: UseFormReturn<OnboardingFormValues>;
 }
-
+ 
 export default function CompanyStep({ form }: CompanyStepProps) {
   const addCompany = () => {
     const currentCompanies = form.getValues("companies");

@@ -2,70 +2,33 @@
 
 import { UseFormReturn } from "react-hook-form";
 import { OnboardingFormValues } from "@/types/form";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+  FormDescription,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase"; // Import your Supabase client
+import { v4 as uuid } from 'uuid';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ProfessionalStepProps {
   form: UseFormReturn<OnboardingFormValues>;
 }
-
-const PROFESSIONAL_CATEGORIES = {
-  "Technical Roles": [
-    { id: "smart_contract_developer", label: "Smart Contract Developer" },
-    { id: "frontend_developer", label: "Frontend Developer" },
-    { id: "full_stack_developer", label: "Full Stack Developer" },
-    { id: "protocol_engineer", label: "Protocol Engineer" },
-    { id: "security_engineer", label: "Security Engineer/Auditor" },
-    { id: "zkproof_engineer", label: "zkProof Engineer" },
-    { id: "research_engineer", label: "Research Engineer" },
-    { id: "infrastructure_engineer", label: "Infrastructure Engineer" },
-    { id: "technical_writer", label: "Technical Writer" },
-  ],
-  "Product & Design": [
-    { id: "product_manager", label: "Product Manager" },
-    { id: "product_designer", label: "Product Designer" },
-    { id: "ux_researcher", label: "UX Researcher" },
-    { id: "technical_product_manager", label: "Technical Product Manager" },
-  ],
-  "Business & Operations": [
-    { id: "founder", label: "Founder/Co-founder" },
-    { id: "business_development", label: "Business Development" },
-    { id: "operations_manager", label: "Operations Manager" },
-    { id: "treasury_manager", label: "Treasury Manager" },
-    { id: "tokenomics_designer", label: "Token Economics Designer" },
-    { id: "community_manager", label: "Community Manager" },
-    { id: "developer_relations", label: "Developer Relations" },
-    { id: "growth_manager", label: "Growth Manager" },
-    { id: "partnership_manager", label: "Partnership Manager" },
-  ],
-  "Content & Marketing": [
-    { id: "content_creator", label: "Content Creator" },
-    { id: "technical_content_writer", label: "Technical Content Writer" },
-    { id: "community_content_manager", label: "Community Content Manager" },
-    { id: "social_media_manager", label: "Social Media Manager" },
-    { id: "marketing_manager", label: "Marketing Manager" },
-    { id: "brand_manager", label: "Brand Manager" },
-  ],
-  "Investment & Advisory": [
-    { id: "venture_capitalist", label: "Venture Capitalist" },
-    { id: "angel_investor", label: "Angel Investor" },
-    { id: "protocol_researcher", label: "Protocol Researcher" },
-    { id: "tokenomics_advisor", label: "Tokenomics Advisor" },
-    { id: "governance_specialist", label: "Governance Specialist" },
-    { id: "mev_researcher", label: "MEV Researcher" },
-    { id: "defi_strategist", label: "DeFi Strategist" },
-  ],
-  "Trading & Analytics": [
-    { id: "quant_trader", label: "Quant Trader" },
-    { id: "onchain_analyst", label: "On-chain Analyst" },
-    { id: "data_scientist", label: "Data Scientist" },
-    { id: "market_maker", label: "Market Maker" },
-    { id: "trading_strategy_developer", label: "Trading Strategy Developer" },
-  ],
-};
 
 const SKILL_LEVELS = [
   { value: 1, label: "Beginner" },
@@ -76,6 +39,88 @@ const SKILL_LEVELS = [
 ];
 
 export default function ProfessionalStep({ form }: ProfessionalStepProps) {
+  const [roles, setRoles] = useState<
+    { id: string; name: string; label: string }[]
+  >([]);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [skills, setSkills] = useState<
+    { id: string; name: string; label: string }[]
+  >([]);
+  const [newSkillName, setNewSkillName] = useState("");
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [isSkillDialogOpen, setIsSkillDialogOpen] = useState(false);
+  const [newRoleCategory, setNewRoleCategory] = useState("");
+  const [newRoleDescription, setNewRoleDescription] = useState("");
+  const [newSkillDescription, setNewSkillDescription] = useState("");
+
+  // Fetch roles and skills from Supabase on component mount
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("roles")
+          .select("id, name");
+
+        if (error) {
+          console.error("Error fetching roles:", error);
+          return;
+        }
+
+        setRoles(data.map((role) => ({ ...role, label: role.name })));
+      } catch (error) {
+        console.error("Error fetching roles:", error);
+      }
+    };
+
+    const fetchSkills = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("skills")
+          .select("id, name");
+
+        if (error) {
+          console.error("Error fetching skills:", error);
+          return;
+        }
+
+        setSkills(data.map((skill) => ({ ...skill, label: skill.name })));
+      } catch (error) {
+        console.error("Error fetching skills:", error);
+      }
+    };
+
+    fetchRoles();
+    fetchSkills();
+  }, []);
+
+  const handleRoleChange = async (selectedValue: string) => {
+    form.setValue("primaryRole", selectedValue);
+
+    // If it's a new role, add it to the Supabase table
+    if (selectedValue.startsWith("new-")) {
+      const newRole = selectedValue.replace("new-", "");
+      try {
+        const { error } = await supabase
+          .from("roles")
+          .insert({ name: newRole.toLowerCase() }); // Store in lowercase
+
+        if (error) {
+          console.error("Error adding new role:", error);
+          // Handle error (e.g., show an error message to the user)
+        } else {
+          // Update the local roles state with the new role
+          setRoles([
+            ...roles,
+            { id: uuid(), name: newRole.toLowerCase(), label: newRole },
+          ]);
+          setNewRoleName(""); // Clear the input
+        }
+      } catch (error) {
+        console.error("Error adding new role:", error);
+      }
+    }
+  };
+
   const addSkill = () => {
     const currentSkills = form.getValues("skills");
     form.setValue("skills", [
@@ -86,14 +131,82 @@ export default function ProfessionalStep({ form }: ProfessionalStepProps) {
 
   const removeSkill = (index: number) => {
     const currentSkills = form.getValues("skills");
-    form.setValue(
-      "skills",
-      currentSkills.filter((_, i) => i !== index)
-    );
+    form.setValue("skills", currentSkills.filter((_, i) => i !== index));
+  };
+
+  const handleSkillChange = async (
+    index: number,
+    selectedValue: string
+  ) => {
+    form.setValue(`skills.${index}.name`, selectedValue);
+
+    // If it's a new skill, add it to the Supabase table
+    if (selectedValue.startsWith("new-")) {
+      const newSkill = selectedValue.replace("new-", "");
+      try {
+        const { error } = await supabase
+          .from("skills")
+          .insert({ name: newSkill.toLowerCase() }); // Store in lowercase
+
+        if (error) {
+          console.error("Error adding new skill:", error);
+          // Handle error (e.g., show an error message to the user)
+        } else {
+          // Update the local skills state with the new skill
+          setSkills([
+            ...skills,
+            { id: uuid(), name: newSkill.toLowerCase(), label: newSkill },
+          ]);
+          setNewSkillName(""); // Clear the input
+        }
+      } catch (error) {
+        console.error("Error adding new skill:", error);
+      }
+    }
+  };
+
+  const handleAddNewRole = async () => {
+    try {
+      const { error } = await supabase
+        .from("roles")
+        .insert({ name: newRoleName.toLowerCase(), category: newRoleCategory, description: newRoleDescription });
+
+      if (error) {
+        console.error("Error adding new role:", error);
+      } else {
+        setRoles([...roles, { id: uuid(), name: newRoleName.toLowerCase(), label: newRoleName }]);
+        setNewRoleName("");
+        setNewRoleCategory("");
+        setNewRoleDescription("");
+        setIsRoleDialogOpen(false);
+      }
+    } catch (error) {
+      console.error("Error adding new role:", error);
+    }
+  };
+
+  const handleAddNewSkill = async () => {
+    try {
+      const { error } = await supabase
+        .from("skills")
+        .insert({ name: newSkillName.toLowerCase(), description: newSkillDescription });
+
+      if (error) {
+        console.error("Error adding new skill:", error);
+      } else {
+        setSkills([...skills, { id: uuid(), name: newSkillName.toLowerCase(), label: newSkillName }]);
+        setNewSkillName("");
+        setNewSkillDescription("");
+        setIsSkillDialogOpen(false);
+      }
+    } catch (error) {
+      console.error("Error adding new skill:", error);
+    }
   };
 
   return (
     <div className="space-y-6">
+      {/* Primary Role Select */}
       <FormField
         control={form.control}
         name="primaryRole"
@@ -103,25 +216,40 @@ export default function ProfessionalStep({ form }: ProfessionalStepProps) {
             <FormDescription>
               Select your main role in the crypto/web3 space
             </FormDescription>
-            <Select onValueChange={field.onChange} value={field.value}>
+            <Select onValueChange={handleRoleChange} value={field.value}>
               <FormControl>
                 <SelectTrigger className="text-lg p-6">
                   <SelectValue placeholder="Select your primary role" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent className="max-h-[300px]">
-                {Object.entries(PROFESSIONAL_CATEGORIES).map(([category, roles]) => (
-                  <div key={category}>
-                    <div className="px-2 py-1.5 text-sm font-semibold bg-muted">
-                      {category}
-                    </div>
-                    {roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
-                        {role.label}
-                      </SelectItem>
-                    ))}
-                  </div>
+                {roles.map((role) => (
+                  <SelectItem key={role.id} value={role.id}>
+                    {role.label}
+                  </SelectItem>
                 ))}
+
+                <div className="py-2">
+                  <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button onClick={() => setIsRoleDialogOpen(true)}>Add a new role</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add New Role</DialogTitle>
+                        <DialogDescription>Fill in the details for the new role</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <Input placeholder="Role Name" value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} />
+                        <Input placeholder="Role Category" value={newRoleCategory} onChange={(e) => setNewRoleCategory(e.target.value)} />
+                        <Textarea placeholder="Role Description" value={newRoleDescription} onChange={(e) => setNewRoleDescription(e.target.value)} />
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={handleAddNewRole}>Add Role</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </SelectContent>
             </Select>
             <FormMessage />
@@ -129,71 +257,79 @@ export default function ProfessionalStep({ form }: ProfessionalStepProps) {
         )}
       />
 
-      {/* <FormField
-        control={form.control}
-        name="experienceYears"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Years of Experience</FormLabel>
-            <FormDescription>
-              How many years of experience do you have in this role?
-            </FormDescription>
-            <FormControl>
-              <Input 
-                type="number" 
-                min="0"
-                max="50"
-                step="0.5"
-                className="text-lg p-6"
-                {...field}
-                value={field.value as string | number | readonly string[] | undefined}
-                onChange={e => field.onChange(parseFloat(e.target.value))}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      /> */}
-
+      {/* Skills Section */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <div>
             <FormLabel>Skills</FormLabel>
-            <FormDescription>
-              Add relevant skills for your role
-            </FormDescription>
+            <FormDescription>Add relevant skills for your role</FormDescription>
           </div>
           <Button type="button" variant="outline" onClick={addSkill}>
             Add Skill
           </Button>
         </div>
-
-        {form.watch("skills").map((_, index) => (
+ 
+        {form.watch("skills").map((skill, index) => (
           <div key={index} className="flex gap-4 items-start">
+            {/* Skill Name Select */}
             <FormField
               control={form.control}
               name={`skills.${index}.name`}
               render={({ field }) => (
                 <FormItem className="flex-1">
-                  <FormControl>
-                    <Input 
-                      placeholder="Skill name" 
-                      {...field} 
-                      className="text-lg p-6"
-                    />
-                  </FormControl>
+                  <Select
+                    onValueChange={(value) => handleSkillChange(index, value)}
+                    value={field.value} // Use field.value here
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select skill" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {skills.map((skill) => (
+                        <SelectItem key={skill.id} value={skill.id}>
+                          {skill.label}
+                        </SelectItem>
+                      ))}
+
+                      <div className="py-2">
+                        <Dialog open={isSkillDialogOpen} onOpenChange={setIsSkillDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button onClick={() => setIsSkillDialogOpen(true)}>Add a new skill</Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Add New Skill</DialogTitle>
+                              <DialogDescription>Fill in the details for the new skill</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <Input placeholder="Skill Name" value={newSkillName} onChange={(e) => setNewSkillName(e.target.value)} />
+                              <Textarea placeholder="Skill Description" value={newSkillDescription} onChange={(e) => setNewSkillDescription(e.target.value)} />
+                            </div>
+                            <DialogFooter>
+                              <Button onClick={handleAddNewSkill}>Add Skill</Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
+            {/* Proficiency Level Select */}
             <FormField
               control={form.control}
               name={`skills.${index}.proficiencyLevel`}
               render={({ field }) => (
                 <FormItem className="w-[200px]">
-                  <Select 
-                    onValueChange={(value) => field.onChange(parseInt(value))}
+                  <Select
+                    onValueChange={(value) =>
+                      field.onChange(parseInt(value, 10))
+                    }
                     value={field.value.toString()}
                   >
                     <FormControl>
@@ -203,8 +339,8 @@ export default function ProfessionalStep({ form }: ProfessionalStepProps) {
                     </FormControl>
                     <SelectContent>
                       {SKILL_LEVELS.map((level) => (
-                        <SelectItem 
-                          key={level.value} 
+                        <SelectItem
+                          key={level.value}
                           value={level.value.toString()}
                         >
                           {level.label}
@@ -228,6 +364,26 @@ export default function ProfessionalStep({ form }: ProfessionalStepProps) {
           </div>
         ))}
       </div>
+
+      {/* Skill Dialog */}
+      <Dialog open={isSkillDialogOpen} onOpenChange={setIsSkillDialogOpen}>
+        <DialogTrigger asChild>
+          <Button onClick={() => setIsSkillDialogOpen(true)}>Add a new skill</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Skill</DialogTitle>
+            <DialogDescription>Fill in the details for the new skill</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input placeholder="Skill Name" value={newSkillName} onChange={(e) => setNewSkillName(e.target.value)} />
+            <Textarea placeholder="Skill Description" value={newSkillDescription} onChange={(e) => setNewSkillDescription(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button onClick={handleAddNewSkill}>Add Skill</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

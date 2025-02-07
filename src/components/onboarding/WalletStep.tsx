@@ -1,4 +1,3 @@
-
 // components/onboarding/WalletStep.tsx
 
 import { UseFormReturn } from "react-hook-form";
@@ -8,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface WalletStepProps {
   form: UseFormReturn<OnboardingFormValues>;
@@ -21,8 +21,10 @@ const BLOCKCHAINS = [
   "Arbitrum",
   "Optimism",
 ];
-
+ 
 export default function WalletStep({ form }: WalletStepProps) {
+  const [newBlockchain, setNewBlockchain] = useState('');
+  
   const addWallet = () => {
     const currentWallets = form.getValues("walletAddresses");
     form.setValue("walletAddresses", [
@@ -39,6 +41,20 @@ export default function WalletStep({ form }: WalletStepProps) {
     );
   };
 
+  const handleBlockchainChange = async (
+    index: number,
+    selectedValue: string
+  ) => {
+    form.setValue(`walletAddresses.${index}.blockchain`, selectedValue);
+
+    // If it's a new blockchain, add it to the BLOCKCHAINS array
+    if (selectedValue.startsWith("new-")) {
+      const newBlockchainName = selectedValue.replace("new-", "");
+      BLOCKCHAINS.push(newBlockchainName); 
+      setNewBlockchain(''); // Clear the input
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -51,12 +67,13 @@ export default function WalletStep({ form }: WalletStepProps) {
       <div className="space-y-4">
         {form.watch("walletAddresses").map((_, index) => (
           <div key={index} className="flex gap-4 items-start">
+            {/* Blockchain Select */}
             <FormField
               control={form.control}
               name={`walletAddresses.${index}.blockchain`}
               render={({ field }) => (
                 <FormItem className="w-[200px]">
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(value) => handleBlockchainChange(index, value)} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select blockchain" />
@@ -68,25 +85,23 @@ export default function WalletStep({ form }: WalletStepProps) {
                           {blockchain}
                         </SelectItem>
                       ))}
+
+                      {/* Input for adding a new blockchain */}
+                      <div className="py-2">
+                        <Input
+                          placeholder="Add new blockchain"
+                          value={newBlockchain}
+                          onChange={(e) => setNewBlockchain(e.target.value)}
+                          className="text-lg p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      {newBlockchain && (
+                        <SelectItem key="new-blockchain" value={`new-${newBlockchain}`}>
+                          Add "{newBlockchain}"
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name={`walletAddresses.${index}.address`}
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormControl>
-                    <Input 
-                      placeholder="Wallet address" 
-                      {...field} 
-                      className="text-lg p-6"
-                    />
-                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

@@ -1,47 +1,36 @@
-// components/onboarding/BasicInfoStep.tsx
-
-import { UseFormReturn } from "react-hook-form";
-import { OnboardingFormValues } from "@/types/form";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
-import { useState } from "react";
+import { Control } from "react-hook-form";
+import { OnboardingFormValues } from "@/types/form";
 
 interface BasicInfoStepProps {
-  form: UseFormReturn<OnboardingFormValues>;
+  control: Control<OnboardingFormValues>;
+  imagePreview: string | null;
+  handleImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export default function BasicInfoStep({ form }: BasicInfoStepProps) {
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      form.setValue("profilePicture", file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
+export const BasicInfoStep = ({ control, imagePreview, handleImageChange }: BasicInfoStepProps) => {
   return (
     <div className="space-y-6">
+      {/* Username field */}
       <FormField
-        control={form.control}
+        control={control}
         name="username"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Username</FormLabel>
             <FormDescription>
-              Choose a unique username that will identify you on the platform
+              Choose a unique username (minimum 3 characters)
             </FormDescription>
             <FormControl>
-              <Input 
-                placeholder="satoshi" 
-                {...field} 
+              <Input
+                placeholder="satoshi"
+                {...field}
                 className="text-lg p-6"
+                minLength={3}
+                maxLength={50}
               />
             </FormControl>
             <FormMessage />
@@ -49,17 +38,22 @@ export default function BasicInfoStep({ form }: BasicInfoStepProps) {
         )}
       />
 
+      {/* Full Name field */}
       <FormField
-        control={form.control}
+        control={control}
         name="fullName"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Full Name</FormLabel>
+            <FormDescription>
+              Enter your full name
+            </FormDescription>
             <FormControl>
-              <Input 
-                placeholder="Satoshi Nakamoto" 
-                {...field} 
+              <Input
+                placeholder="Satoshi Nakamoto"
+                {...field}
                 className="text-lg p-6"
+                maxLength={100}
               />
             </FormControl>
             <FormMessage />
@@ -67,8 +61,33 @@ export default function BasicInfoStep({ form }: BasicInfoStepProps) {
         )}
       />
 
+      {/* Bio field */}
       <FormField
-        control={form.control}
+        control={control}
+        name="bio"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Bio</FormLabel>
+            <FormDescription>
+              Tell us about yourself (maximum 500 characters)
+            </FormDescription>
+            <FormControl>
+              <Textarea
+                placeholder="Share a brief introduction..."
+                className="min-h-[100px] text-lg p-6"
+                maxLength={500}
+                {...field}
+                value={typeof field.value === 'string' ? field.value : ''}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Profile Picture field */}
+      <FormField
+        control={control}
         name="profilePicture"
         render={({ field: { value, onChange, ...field } }) => (
           <FormItem>
@@ -80,13 +99,13 @@ export default function BasicInfoStep({ form }: BasicInfoStepProps) {
               <div className="space-y-4">
                 <Input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handleImageChange}
                   className="text-lg p-6"
                   {...field}
                 />
                 {imagePreview && (
-                  <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden">
+                  <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-primary">
                     <Image
                       src={imagePreview}
                       alt="Profile preview"
@@ -103,5 +122,4 @@ export default function BasicInfoStep({ form }: BasicInfoStepProps) {
       />
     </div>
   );
-}
-
+};

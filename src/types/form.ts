@@ -1,45 +1,67 @@
 // types/form.ts
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+
 export type OnboardingFormValues = {
-  // Basic Info
+
   username: string;
+
   fullName: string;
+
+  bio: string;
+
   profilePicture?: File;
 
-  // Location & Personal
   location: string;
+
   birthday: string;
+
   cryptoEntryDate: string;
 
-  // Professional
-  primaryRole: string;
-  skills: Array<{
+  companies: {
+
     name: string;
-    proficiencyLevel: number;
-  }>;
 
-  // Digital Identity
-  digitalIdentities: Array<{
-    platform: string;
-    identifier: string;
-  }>;
+    website: string;
 
-  // Wallet Addresses
-  walletAddresses: Array<{
-    blockchain: string;
-    address: string;
-  }>;
-
-  // Company Experience
-  companies: Array<{
-    name: string;
-    website?: string;
     role: string;
+
     startDate: string;
-    endDate?: string;
+
+    endDate: string;
+
     isCurrent: boolean;
-  }>;
+
+  }[];
+
+  digitalIdentities: {
+
+    platform: string;
+
+    identifier: string;
+
+  }[];
+
+  walletAddresses: {
+
+    blockchain: string;
+
+    address: string;
+
+  }[];
+
+  roles: {
+
+    value: string;
+
+  }[];
+
+  skills: {
+
+    value: string;
+
+  }[];
+
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
