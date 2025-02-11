@@ -14,6 +14,7 @@ interface Step5Props {
   handleBlockchainChange: (index: number, selectedValue: string) => void;
   removeWallet: (index: number) => void;
   addWallet: () => void;
+  walletWarning: string;
 }
 
 const Step5: React.FC<Step5Props> = ({
@@ -23,6 +24,7 @@ const Step5: React.FC<Step5Props> = ({
   handleBlockchainChange,
   removeWallet,
   addWallet,
+  walletWarning,
 }) => {
   const { control, watch, formState: { errors } } = useFormContext();
 
@@ -103,6 +105,11 @@ const Step5: React.FC<Step5Props> = ({
         <Button type="button" variant="outline" onClick={addWallet}>
           Add Wallet Address
         </Button>
+        {walletWarning && (
+          <div className="text-red-600 text-sm">
+            {walletWarning}
+          </div>
+        )}
       </div>
     </div>
   );

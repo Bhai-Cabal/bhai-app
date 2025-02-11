@@ -4,6 +4,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function DashboardLayout({
   children,
@@ -22,6 +23,10 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen">
       <DashboardNav />
+      
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
       <main className="flex-1 p-8 ml-[16rem]">{children}</main>
     </div>
   );

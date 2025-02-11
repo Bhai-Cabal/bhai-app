@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { FormItem, FormLabel, FormDescription, FormControl, FormMessage } from '@/components/ui/form';
@@ -26,6 +26,7 @@ interface Step4Props {
   skillInput: string;
   skillSuggestions: Skill[];
   selectedSkills: Skill[];
+  identityWarning: string;
 }
 
 const ROLE_CATEGORIES = [
@@ -55,6 +56,7 @@ const Step4: React.FC<Step4Props> = ({
   skillInput,
   skillSuggestions,
   selectedSkills,
+  identityWarning,
 }) => {
   const { control, watch, setValue, formState: { errors } } = useFormContext();
   const [roleInput, setRoleInput] = useState('');
@@ -74,6 +76,10 @@ const Step4: React.FC<Step4Props> = ({
   const [skillInputState, setSkillInputState] = useState(skillInput);
   const [skillValidationError, setSkillValidationError] = useState('');
 
+  useEffect(() => {
+    setSkillInputState(skillInput);
+  }, [skillInput]);
+
   const selectedPlatforms = watch('digitalIdentities')
     .map((identity: { platform: string }) => identity.platform.toLowerCase());
 
@@ -84,7 +90,7 @@ const Step4: React.FC<Step4Props> = ({
   const selectedRoles = watch('roles').map((role: { name: string }) => role.name.toLowerCase());
   const availableRoles = roles.filter(role => !selectedRoles.includes(role.name.toLowerCase()));
 
-  const selectedSkillsNames = selectedSkills.map(skill => skill.name.toLowerCase());
+  const selectedSkillsNames = watch('skills').map((skill: { name: string }) => skill.name.toLowerCase());
   const availableSkills = skills.filter(skill => !selectedSkillsNames.includes(skill.name.toLowerCase()));
 
   const filteredRoles = availableRoles.filter(role => 
@@ -111,7 +117,7 @@ const Step4: React.FC<Step4Props> = ({
     const similarSkills = findSimilarSkills(newSkillDetails.name);
     
     if (similarSkills.length > 0) {
-      setSkillValidationError(`Similar skills exist: ${similarSkills.map(s => s.name).join(', ')}`);
+      alert(`Similar skills exist: ${similarSkills.map(s => s.name).join(', ')}`);
       return;
     }
 
@@ -124,7 +130,7 @@ const Step4: React.FC<Step4Props> = ({
       if (error) throw error;
 
       if (data) {
-        setValue('skills', [...watch('skills'), data[0]]);
+        setValue('skills', [...watch('skills'), { name: newSkillDetails.name, id: data[0].id }]);
         setIsAddingNewSkill(false);
         setNewSkillDetails({ name: '', description: '' });
         setSkillValidationError('');
@@ -149,7 +155,7 @@ const Step4: React.FC<Step4Props> = ({
       if (error) throw error;
 
       if (data) {
-        setValue('roles', [...watch('roles'), { name: newRoleDetails.name }]);
+        setValue('roles', [...watch('roles'), { name: newRoleDetails.name, id: data[0].id }]);
         setIsAddingNewRole(false);
         setNewRoleDetails({ name: '', category: '', description: '' });
       }
@@ -165,7 +171,7 @@ const Step4: React.FC<Step4Props> = ({
   };
 
   const handleRemoveSkill = (skill: Skill) => {
-    const updatedSkills = selectedSkills.filter((s: Skill) => s.name !== skill.name);
+    const updatedSkills = watch('skills').filter((s: Skill) => s.name !== skill.name);
     setValue('skills', updatedSkills);
     removeSkill(skill);
   };
@@ -180,7 +186,7 @@ const Step4: React.FC<Step4Props> = ({
       <div>
         <FormLabel>Digital Identities</FormLabel>
         <FormDescription>
-          Add your social media and professional profiles (Twitter and Telegram are mandatory)
+          Add your social media and professional profiles.
         </FormDescription>
       </div>
 
@@ -257,6 +263,11 @@ const Step4: React.FC<Step4Props> = ({
         >
           Add Digital Identity
         </Button>
+        {identityWarning && (
+          <div className="text-red-600 text-sm">
+            {identityWarning}
+          </div>
+        )}
       </div>
 
       {/* Roles Section */}
@@ -382,17 +393,11 @@ const Step4: React.FC<Step4Props> = ({
                 placeholder="Enter skill"
                 value={skillInputState}
                 className="text-lg p-3"
-                onChange={(e) => {
-                  setSkillInputState(e.target.value);
-                  setSkillValidationError('');
-                }}
+                onChange={(e) => setSkillInputState(e.target.value)}
                 onFocus={() => setIsSkillInputFocused(true)}
                 onBlur={() => setTimeout(() => setIsSkillInputFocused(false), 200)}
               />
             </FormControl>
-            {skillValidationError && (
-              <div className="text-red-500 text-sm mt-1">{skillValidationError}</div>
-            )}
           </FormItem>
           {isSkillInputFocused && (
             <div className="bg-white border rounded shadow-md">
@@ -401,7 +406,8 @@ const Step4: React.FC<Step4Props> = ({
                   key={skill.name}
                   className="p-2 cursor-pointer hover:bg-gray-200"
                   onClick={() => {
-                    handleSkillSelect(skill);
+                    const currentSkills = watch('skills');
+                    setValue('skills', [...currentSkills, { name: skill.name, id: skill.id }]);
                     setSkillInputState('');
                   }}
                 >
@@ -432,9 +438,6 @@ const Step4: React.FC<Step4Props> = ({
               onChange={(e) => handleNewSkillDetailsChange('description', e.target.value)}
               className="text-lg p-3"
             />
-            {skillValidationError && (
-              <div className="text-red-500 text-sm">{skillValidationError}</div>
-            )}
             <div className="flex gap-2">
               <Button 
                 type="button" 
@@ -446,10 +449,7 @@ const Step4: React.FC<Step4Props> = ({
               <Button 
                 type="button" 
                 variant="ghost" 
-                onClick={() => {
-                  setIsAddingNewSkill(false);
-                  setSkillValidationError('');
-                }}
+                onClick={() => setIsAddingNewSkill(false)}
               >
                 Cancel
               </Button>
@@ -458,7 +458,7 @@ const Step4: React.FC<Step4Props> = ({
         )}
 
         <div className="space-y-2">
-          {selectedSkills.map((skill) => (
+          {watch('skills').map((skill: any, index: number) => (
             <div key={skill.name} className="flex items-center justify-between p-2 border rounded">
               <span>{skill.name}</span>
               <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSkill(skill)}>

@@ -2,17 +2,16 @@
 
 import { usePrivy } from "@privy-io/react-auth";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  Form,
-  FormControl,
-  FormField,
   FormItem,
   FormLabel,
+  FormDescription,
+  FormControl,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -20,13 +19,42 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import Step2 from "@/components/onboarding/Step2";
+import Step3 from "@/components/onboarding/Step3";
+import Step4 from "@/components/onboarding/Step4";
+import Step5 from "@/components/onboarding/Step5";
+import { Role, Skill } from "@/types/form";
 
 const profileSchema = z.object({
   username: z.string().min(3).max(50),
   fullName: z.string().min(2).max(100),
-  location: z.string().min(2).max(100),
   bio: z.string().max(500).optional(),
+  location: z.string().min(2).max(100),
+  birthday: z.string().optional(),
+  cryptoEntryDate: z.string().optional(),
+  companies: z.array(z.object({
+    companyId: z.string().optional(),
+    name: z.string().optional(),
+    website: z.string().optional(),
+    role: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    isCurrent: z.boolean().optional(),
+  })).optional(),
+  digitalIdentities: z.array(z.object({
+    platform: z.string().optional(),
+    identifier: z.string().optional(),
+  })).optional(),
+  walletAddresses: z.array(z.object({
+    blockchain: z.string().optional(),
+    address: z.string().optional(),
+  })).optional(),
+  roles: z.array(z.object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+  })).optional(),
   skills: z.array(z.string()).optional(),
+  profilePicture: z.instanceof(File).optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -37,14 +65,29 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [newPlatform, setNewPlatform] = useState('');
+  const [newBlockchain, setNewBlockchain] = useState('');
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [skillsData, setSkillsData] = useState<Skill[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState('');
+  const [skillInput, setSkillInput] = useState('');
+  const [skillSuggestions, setSkillSuggestions] = useState<Skill[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       username: "",
       fullName: "",
-      location: "",
       bio: "",
+      location: "",
+      birthday: "",
+      cryptoEntryDate: "",
+      companies: [],
+      digitalIdentities: [],
+      walletAddresses: [],
+      roles: [],
       skills: [],
     },
   });
@@ -67,8 +110,15 @@ export default function ProfilePage() {
       form.reset({
         username: data.username,
         fullName: data.full_name,
-        location: data.location,
         bio: data.bio || "",
+        location: data.location,
+        birthday: data.birthday,
+        cryptoEntryDate: data.crypto_entry_date,
+        companies: data.companies || [],
+        digitalIdentities: data.digital_identities || [],
+        walletAddresses: data.wallet_addresses || [],
+        roles: data.roles || [],
+        skills: data.skills || [],
       });
 
       // Fetch skills
@@ -88,7 +138,7 @@ export default function ProfilePage() {
 
   async function onSubmit(values: ProfileFormValues) {
     if (!user?.id) return;
-    
+
     setIsLoading(true);
     try {
       const { error } = await supabase
@@ -96,8 +146,15 @@ export default function ProfilePage() {
         .update({
           username: values.username,
           full_name: values.fullName,
-          location: values.location,
           bio: values.bio,
+          location: values.location,
+          birthday: values.birthday,
+          crypto_entry_date: values.cryptoEntryDate,
+          companies: values.companies,
+          digital_identities: values.digitalIdentities,
+          wallet_addresses: values.walletAddresses,
+          roles: values.roles,
+          skills: values.skills,
         })
         .eq("id", user.id);
 
@@ -153,7 +210,7 @@ export default function ProfilePage() {
 
       setSkills([...skills, newSkill]);
       setNewSkill("");
-      
+
       toast({
         title: "Skill added",
         description: "New skill has been added to your profile.",
@@ -188,7 +245,7 @@ export default function ProfilePage() {
         if (error) throw error;
 
         setSkills(skills.filter(s => s !== skillName));
-        
+
         toast({
           title: "Skill removed",
           description: "Skill has been removed from your profile.",
@@ -204,116 +261,159 @@ export default function ProfilePage() {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        form.setError('profilePicture', {
+          type: 'manual',
+          message: 'File size must be less than 5MB',
+        });
+        return;
+      }
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        form.setError('profilePicture', {
+          type: 'manual',
+          message: 'File must be in JPG, PNG, or WebP format',
+        });
+        return;
+      }
+
+      form.setValue('profilePicture', file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-8">Edit Profile</h1>
-      
-      <div className="grid gap-6">
-        <Card className="p-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
-              <FormField
-                control={form.control}
-                name="fullName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      <FormProvider {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Card className="p-6">
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Controller
+                  name="username"
+                  control={form.control}
+                  render={({ field }) => <Input {...field} />}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
 
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormItem>
+              <FormLabel>Full Name</FormLabel>
+              <FormControl>
+                <Controller
+                  name="fullName"
+                  control={form.control}
+                  render={({ field }) => <Input {...field} />}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
 
-              <FormField
-                control={form.control}
-                name="bio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bio</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Tell us about yourself..."
-                        className="resize-none"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormItem>
+              <FormLabel>Bio</FormLabel>
+              <FormControl>
+                <Controller
+                  name="bio"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Textarea
+                      placeholder="Tell us about yourself..."
+                      className="resize-none"
+                      {...field}
+                    />
+                  )}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
 
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
-              </Button>
-            </form>
-          </Form>
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Skills</h2>
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Add a skill..."
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && addSkill()}
-              />
-              <Button onClick={addSkill}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {skills.map((skill) => (
-                <div
-                  key={skill}
-                  className="flex items-center gap-1 bg-secondary px-3 py-1 rounded-full"
-                >
-                  <span>{skill}</span>
-                  <button
-                    onClick={() => removeSkill(skill)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+            <FormItem>
+              <FormLabel>Profile Picture</FormLabel>
+              <FormControl>
+                <div className="space-y-4">
+                  <Input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleImageChange}
+                    className="text-lg p-6"
+                  />
+                  {imagePreview && (
+                    <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-primary">
+                      <img src={imagePreview} alt="Profile preview" className="object-cover" />
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </Card>
+
+          <Card className="p-6">
+            <Step2
+              selectedLocation={selectedLocation}
+              setSelectedLocation={setSelectedLocation}
+              getMaxDate={() => new Date().toISOString().split('T')[0]}
+              getMinDate={() => new Date().toISOString().split('T')[0]}
+            />
+          </Card>
+
+          <Card className="p-6">
+            <Step3 addCompany={() => {}} removeCompany={() => {}} />
+          </Card>
+
+          <Card className="p-6">
+            <Step4
+              PLATFORMS={['Twitter', 'GitHub', 'LinkedIn', 'Discord', 'Telegram', 'Medium']}
+              roles={roles}
+              skills={skillsData}
+              newPlatform={newPlatform}
+              setNewPlatform={setNewPlatform}
+              handlePlatformChange={() => {}}
+              handleRoleChange={() => {}}
+              handleSkillInputChange={() => {}}
+              handleSkillSelect={() => {}}
+              removeIdentity={() => {}}
+              removeRole={() => {}}
+              removeSkill={() => {}}
+              addIdentity={() => {}}
+              addRole={() => {}}
+              skillInput={skillInput}
+              skillSuggestions={skillSuggestions}
+              selectedSkills={selectedSkills}
+            />
+          </Card>
+
+          <Card className="p-6">
+            <Step5
+              BLOCKCHAINS={['Ethereum', 'Polygon', 'Solana', 'Bitcoin', 'Arbitrum', 'Optimism']}
+              newBlockchain={newBlockchain}
+              setNewBlockchain={setNewBlockchain}
+              handleBlockchainChange={() => {}}
+              removeWallet={() => {}}
+              addWallet={() => {}}
+            />
+          </Card>
+
+          <Button type="submit" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
+        </form>
+      </FormProvider>
     </div>
   );
 }

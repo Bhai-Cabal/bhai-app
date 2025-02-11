@@ -19,6 +19,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { debounce } from 'lodash';
 import { v4 as uuid } from 'uuid';
 import { useRouter } from 'next/navigation';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const MAX_STEPS = 5;
 
@@ -159,7 +160,7 @@ const OnboardingPage: React.FC = () => {
         crypto_entry_date: values.cryptoEntryDate,
         profile_completion_percentage: 0, // Will be updated later
         role_ids: values.roles.map((role) => role.id),
-        skill_ids: selectedSkills.map((skill) => skill.id),
+        skill_ids: values.skills.map((skill) => skill.id), // Add skill ids to the form data
       });
 
       if (userError) throw userError;
@@ -602,25 +603,28 @@ const OnboardingPage: React.FC = () => {
         return <Step3 addCompany={addCompany} removeCompany={removeCompany} />;
       case 4:
         return (
-          <Step4
-            PLATFORMS={PLATFORMS}
-            roles={roles}
-            skills={skills}
-            newPlatform={newPlatform}
-            setNewPlatform={setNewPlatform}
-            handlePlatformChange={handlePlatformChange}
-            handleRoleChange={handleRoleChange}
-            handleSkillInputChange={handleSkillInputChange}
-            handleSkillSelect={handleSkillSelect}
-            removeIdentity={removeIdentity}
-            removeRole={removeRole}
-            removeSkill={removeSkill}
-            addIdentity={addIdentity}
-            addRole={addRole}
-            skillInput={skillInput}
-            skillSuggestions={skillSuggestions}
-            selectedSkills={selectedSkills}
-          />
+          <>
+            <Step4
+              PLATFORMS={PLATFORMS}
+              roles={roles}
+              skills={skills}
+              newPlatform={newPlatform}
+              setNewPlatform={setNewPlatform}
+              handlePlatformChange={handlePlatformChange}
+              handleRoleChange={handleRoleChange}
+              handleSkillInputChange={handleSkillInputChange}
+              handleSkillSelect={handleSkillSelect}
+              removeIdentity={removeIdentity}
+              removeRole={removeRole}
+              removeSkill={removeSkill}
+              addIdentity={addIdentity}
+              addRole={addRole}
+              skillInput={skillInput}
+              skillSuggestions={skillSuggestions}
+              selectedSkills={selectedSkills} 
+              identityWarning={identityWarning ? 'Twitter and Telegram accounts are mandatory.' : ''} />
+            
+          </>
         );
       case 5:
         return (
@@ -631,6 +635,7 @@ const OnboardingPage: React.FC = () => {
             handleBlockchainChange={handleBlockchainChange}
             removeWallet={removeWallet}
             addWallet={addWallet}
+            walletWarning={walletWarning ? 'Ethereum and Solana wallet addresses are mandatory.' : ''}
           />
         );
       default:
@@ -640,6 +645,9 @@ const OnboardingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
+        <div className="fixed top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
       <div className="max-w-2xl mx-auto">
         <Button variant="outline" onClick={logout} className="absolute mt-4 ml-[36rem]">
           Logout
@@ -651,18 +659,7 @@ const OnboardingPage: React.FC = () => {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          {identityWarning && (
-            <Alert variant="default" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{identityWarning}</AlertDescription>
-            </Alert>
-          )}
-          {walletWarning && (
-            <Alert variant="default" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{walletWarning}</AlertDescription>
-            </Alert>
-          )}
+          
           <FormProvider {...form}>
             <form onSubmit={handleFormSubmit} onKeyDown={handleFormKeyDown} className="space-y-6">
               {renderStepContent()}
