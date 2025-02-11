@@ -15,8 +15,8 @@ export async function checkUserRegistered(userId: string, email: string): Promis
     const { data, error } = await supabase
       .from('users')
       .select('auth_id')
-      // .eq('auth_id', userId)
-      .eq('email', email)
+      .eq('auth_id', userId)
+      // .eq('email', email)
 
     if (error) {
       console.log('Error checking user registration:', error);
