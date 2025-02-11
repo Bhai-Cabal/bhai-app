@@ -41,35 +41,39 @@ const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 // types/form.ts
 
 export const formSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters long'),
-  fullName: z.string().max(100, 'Full name must be less than 100 characters'),
-  bio: z.string().max(500, 'Bio must be less than 500 characters'),
+  username: z.string().min(3, 'Username must be at least 3 characters long').nonempty('Username is required'),
+  fullName: z.string().max(100, 'Full name must be less than 100 characters').nonempty('Full name is required'),
+  bio: z.string().max(500, 'Bio must be less than 500 characters').nonempty('Bio is required'),
   profilePicture: z.any().optional(),
-  location: z.string().optional(),
-  birthday: z.string().optional(),
-  cryptoEntryDate: z.string().optional(),
+  location: z.string().nonempty('Location is required'),
+  birthday: z.string().nonempty('Birthday is required'),
+  cryptoEntryDate: z.string().nonempty('Crypto entry date is required'),
   companies: z.array(
     z.object({
-      name: z.string(),
-      website: z.string().url().optional(),
-      role: z.string(),
-      startDate: z.string(),
+      name: z.string().nonempty('Company name is required'),
+      website: z.string().url('Invalid URL').optional(),
+      role: z.string().nonempty('Role is required'),
+      startDate: z.string().nonempty('Start date is required'),
       endDate: z.string().optional(),
       isCurrent: z.boolean(),
     })
   ),
   digitalIdentities: z.array(
     z.object({
-      platform: z.string(),
-      identifier: z.string(),
+      platform: z.string().nonempty('Platform is required'),
+      identifier: z.string().nonempty('Identifier is required'),
     })
-  ),
+  ).min(2, 'At least two digital identities are required'),
   walletAddresses: z.array(
     z.object({
-      blockchain: z.string(),
-      address: z.string(),
+      blockchain: z.string().nonempty('Blockchain is required'),
+      address: z.string().nonempty('Address is required'),
     })
-  ),
+  ).refine(wallets => wallets.some(wallet => wallet.blockchain === 'ethereum'), {
+    message: 'Ethereum wallet address is required',
+  }).refine(wallets => wallets.some(wallet => wallet.blockchain === 'solana'), {
+    message: 'Solana wallet address is required',
+  }),
   roles: z.array(
     z.object({
       id: z.string(),

@@ -13,7 +13,7 @@ interface Step1Props {
 }
 
 const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, handleImageChange, imagePreview }) => {
-  const { control } = useFormContext();
+  const { control, formState: { errors } } = useFormContext();
 
   return (
     <div className="space-y-6">
@@ -37,7 +37,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
               />
             </FormControl>
             {isUsernameTaken && <p className="text-red-500">Username is already taken</p>}
-            <FormMessage />
+            <FormMessage>{typeof errors.username?.message === 'string' ? errors.username?.message : null}</FormMessage>
           </FormItem>
         )}
       />
@@ -59,7 +59,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                 maxLength={100}
               />
             </FormControl>
-            <FormMessage />
+            <FormMessage>{typeof errors.fullName?.message === 'string' ? errors.fullName?.message : null}</FormMessage>
           </FormItem>
         )}
       />
@@ -82,7 +82,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                 value={typeof field.value === 'string' ? field.value : ''}
               />
             </FormControl>
-            <FormMessage />
+            <FormMessage>{typeof errors.bio?.message === 'string' ? errors.bio?.message : null}</FormMessage>
           </FormItem>
         )}
       />

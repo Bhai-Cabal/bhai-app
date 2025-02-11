@@ -13,14 +13,18 @@ interface Step2Props {
 }
 
 const Step2: React.FC<Step2Props> = ({ selectedLocation, setSelectedLocation, getMaxDate, getMinDate }) => {
-  const { control } = useFormContext();
+  const { control, formState: { errors }, setValue } = useFormContext();
+
+  React.useEffect(() => {
+    setValue('location', selectedLocation);
+  }, [selectedLocation, setValue]);
 
   return (
     <div className="space-y-6">
       <Controller
         name="location"
         control={control}
-        render={() => (
+        render={({ field }) => (
           <FormItem className="flex flex-col">
             <FormLabel>Location</FormLabel>
             <FormDescription>
@@ -29,7 +33,7 @@ const Step2: React.FC<Step2Props> = ({ selectedLocation, setSelectedLocation, ge
             <FormControl>
               <LocationInput selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation} />
             </FormControl>
-            <FormMessage />
+            <FormMessage>{errors.location?.message?.toString()}</FormMessage>
           </FormItem>
         )}
       />
@@ -52,7 +56,7 @@ const Step2: React.FC<Step2Props> = ({ selectedLocation, setSelectedLocation, ge
                 className="text-lg p-6"
               />
             </FormControl>
-            <FormMessage />
+            <FormMessage>{errors.birthday?.message?.toString()}</FormMessage>
           </FormItem>
         )}
       />
@@ -75,7 +79,7 @@ const Step2: React.FC<Step2Props> = ({ selectedLocation, setSelectedLocation, ge
                 className="text-lg p-6"
               />
             </FormControl>
-            <FormMessage />
+            <FormMessage>{errors.cryptoEntryDate?.message?.toString()}</FormMessage>
           </FormItem>
         )}
       />

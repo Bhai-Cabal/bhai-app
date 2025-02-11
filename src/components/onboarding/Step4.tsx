@@ -56,7 +56,7 @@ const Step4: React.FC<Step4Props> = ({
   skillSuggestions,
   selectedSkills,
 }) => {
-  const { control, watch, setValue } = useFormContext();
+  const { control, watch, setValue, formState: { errors } } = useFormContext();
   const [roleInput, setRoleInput] = useState('');
   const [newRoleDetails, setNewRoleDetails] = useState({ 
     name: '', 
@@ -152,6 +152,18 @@ const Step4: React.FC<Step4Props> = ({
     }
   };
 
+  const handleRemoveRole = (index: number) => {
+    const updatedRoles = watch('roles').filter((_: any, i: number) => i !== index);
+    setValue('roles', updatedRoles);
+    removeRole(index);
+  };
+
+  const handleRemoveSkill = (skill: Skill) => {
+    const updatedSkills = selectedSkills.filter((s: Skill) => s.name !== skill.name);
+    setValue('skills', updatedSkills);
+    removeSkill(skill);
+  };
+
   const filteredSkills = skills.filter(skill => 
     skill.name.toLowerCase().includes(skillInputState.toLowerCase())
   );
@@ -162,7 +174,7 @@ const Step4: React.FC<Step4Props> = ({
       <div>
         <FormLabel>Digital Identities</FormLabel>
         <FormDescription>
-          Add your social media and professional profiles
+          Add your social media and professional profiles (Twitter and Telegram are mandatory)
         </FormDescription>
       </div>
 
@@ -180,7 +192,9 @@ const Step4: React.FC<Step4Props> = ({
                       value={field.value}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select platform" />
+                        <SelectValue placeholder="Select platform">
+                          {field.value ? field.value.charAt(0).toUpperCase() + field.value.slice(1) : ''}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {availablePlatforms.map((platform: string) => (
@@ -204,7 +218,7 @@ const Step4: React.FC<Step4Props> = ({
                       </SelectContent>
                     </Select>
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage>{errors.digitalIdentities?.[index]?.platform?.message}</FormMessage>
                 </FormItem>
               )}
             />
@@ -220,7 +234,7 @@ const Step4: React.FC<Step4Props> = ({
                       className="text-lg p-3"
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage>{errors.digitalIdentities?.[index]?.identifier?.message}</FormMessage>
                 </FormItem>
               )}
             />
@@ -338,30 +352,12 @@ const Step4: React.FC<Step4Props> = ({
           {watch('roles').map((role: any, index: number) => (
             <div key={role.name} className="flex items-center justify-between p-2 border rounded">
               <span>{role.name}</span>
-              <Button type="button" variant="ghost" size="icon" onClick={() => removeRole(index)}>
+              <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveRole(index)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
           ))}
         </div>
-        {/* <Button 
-          type="button" 
-          variant="outline" 
-          onClick={() => {
-            if (roleInput.trim()) {
-              const existingRole = roles.find(r => r.name === roleInput.trim());
-              if (existingRole) {
-                const currentRoles = watch('roles');
-                setValue('roles', [...currentRoles, { name: existingRole.name }]);
-                setRoleInput('');
-              } else {
-                setIsAddingNewRole(true);
-              }
-            }
-          }}
-        >
-          Add Role
-        </Button> */}
       </div>
 
       {/* Skills Section */}
@@ -459,7 +455,7 @@ const Step4: React.FC<Step4Props> = ({
           {selectedSkills.map((skill) => (
             <div key={skill.name} className="flex items-center justify-between p-2 border rounded">
               <span>{skill.name}</span>
-              <Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(skill)}>
+              <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSkill(skill)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>

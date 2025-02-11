@@ -18,11 +18,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { debounce } from 'lodash';
 import { v4 as uuid } from 'uuid';
-import {redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 const MAX_STEPS = 5;
 
 const OnboardingPage: React.FC = () => {
+  const router = useRouter();
   const { ready, authenticated, user, logout } = usePrivy();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +46,8 @@ const OnboardingPage: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [isUsernameTaken, setIsUsernameTaken] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+  const [walletWarning, setWalletWarning] = useState<string | null>(null);
+  const [identityWarning, setIdentityWarning] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRolesAndSkills = async () => {
@@ -91,11 +94,11 @@ const OnboardingPage: React.FC = () => {
 
   useEffect(() => {
     if (ready && !authenticated) {
-      redirect('/login');
+      router.push('/login');
     } else if (ready && authenticated && user?.id) {
       checkUserRegistered(user.id, user.email?.address ?? '').then((isRegistered) => {
         if (isRegistered) {
-          redirect('/dashboard');
+          router.push('/dashboard');
         }
       });
     }
@@ -124,6 +127,16 @@ const OnboardingPage: React.FC = () => {
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const values = form.getValues();
+
+    const walletAddresses = form.getValues('walletAddresses');
+    const hasEthereum = walletAddresses.some(wallet => wallet.blockchain.toLowerCase() === 'ethereum');
+    const hasSolana = walletAddresses.some(wallet => wallet.blockchain.toLowerCase() === 'solana');
+    if (!hasEthereum || !hasSolana) {
+      setWalletWarning('Ethereum and Solana wallet addresses are mandatory.');
+      return;
+    } else {
+      setWalletWarning(null);
+    }
 
     if (!user?.id) return;
 
@@ -223,7 +236,7 @@ const OnboardingPage: React.FC = () => {
         ),
       ]);
 
-      redirect('/dashboard');
+      router.push('/dashboard');
     } catch (error: any) {
       console.error('Error:', error);
       setError(error.message);
@@ -232,8 +245,43 @@ const OnboardingPage: React.FC = () => {
     }
   };
 
-  const handleNextStep = () => {
-    if (currentStep < MAX_STEPS) {
+  const stepFields: { [key: number]: string[] } = {
+    1: ['username', 'fullName', 'bio'],
+    2: ['location','birthday', 'cryptoEntryDate'],
+    3: ['companies'],
+    4: ['digitalIdentities', 'roles', 'skills'],
+    5: ['walletAddresses'],
+  };
+
+  const handleNextStep = async () => {
+    const fieldsToValidate = stepFields[currentStep];
+    const isValid = await form.trigger(fieldsToValidate as (keyof OnboardingFormValues)[]);
+
+    if (currentStep === 4) {
+      const digitalIdentities = form.getValues('digitalIdentities');
+      const hasTwitter = digitalIdentities.some(identity => identity.platform.toLowerCase() === 'twitter');
+      const hasTelegram = digitalIdentities.some(identity => identity.platform.toLowerCase() === 'telegram');
+      if (!hasTwitter || !hasTelegram) {
+        setIdentityWarning('Twitter and Telegram accounts are mandatory.');
+        return;
+      } else {
+        setIdentityWarning(null);
+      }
+    }
+
+    if (currentStep === 5) {
+      const walletAddresses = form.getValues('walletAddresses');
+      const hasEthereum = walletAddresses.some(wallet => wallet.blockchain.toLowerCase() === 'ethereum');
+      const hasSolana = walletAddresses.some(wallet => wallet.blockchain.toLowerCase() === 'solana');
+      if (!hasEthereum && !hasSolana) {
+        setWalletWarning('Ethereum and Solana wallet addresses are mandatory.');
+        return;
+      } else {
+        setWalletWarning(null);
+      }
+    }
+
+    if (isValid && currentStep < MAX_STEPS) {
       setCurrentStep((prevStep) => prevStep + 1);
     }
   };
@@ -606,6 +654,18 @@ const OnboardingPage: React.FC = () => {
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {identityWarning && (
+            <Alert variant="default" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{identityWarning}</AlertDescription>
+            </Alert>
+          )}
+          {walletWarning && (
+            <Alert variant="default" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{walletWarning}</AlertDescription>
             </Alert>
           )}
           <FormProvider {...form}>

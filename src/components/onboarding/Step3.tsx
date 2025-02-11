@@ -19,6 +19,7 @@ interface Company {
   id: string;
   name: string;
   website: string;
+  // description?: string; // Removed property
 }
 
 interface Step3Props {
@@ -27,12 +28,13 @@ interface Step3Props {
 }
 
 const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
-  const { control, watch, setValue } = useFormContext();
+  const { control, watch, setValue, formState: { errors } } = useFormContext();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([]);
   const [isNewCompanyDialogOpen, setIsNewCompanyDialogOpen] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState('');
   const [newCompanyWebsite, setNewCompanyWebsite] = useState('');
+  const [newCompanyDescription, setNewCompanyDescription] = useState('');
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -54,34 +56,47 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
 
   // Handle adding a new company to the database
   const handleAddNewCompany = async () => {
-    const { data, error } = await supabase
-      .from('companies')
-      .insert([{ name: newCompanyName, website: newCompanyWebsite }])
-      .select();
-
-    if (error) {
-      console.error('Error adding company:', error);
-    } else if (data && data[0]) {
-      const newCompany = data[0];
-      
-      // Update both companies and filtered companies lists
-      setCompanies(prevCompanies => [...prevCompanies, newCompany]);
-      setFilteredCompanies(prevFiltered => [...prevFiltered, newCompany]);
-
-      // Update form data if we have a current index
+    // Check if the company already exists in the database
+    const existingCompany = companies.find(company => company.name === newCompanyName && company.website === newCompanyWebsite);
+    
+    if (existingCompany) {
+      // If the company already exists, update the form data with the existing company details
       if (currentIndex !== null) {
-        setValue(`companies.${currentIndex}.companyId`, newCompany.id);
-        setValue(`companies.${currentIndex}.name`, newCompany.name);
-        setValue(`companies.${currentIndex}.website`, newCompany.website);
+        setValue(`companies.${currentIndex}.companyId`, existingCompany.id);
+        setValue(`companies.${currentIndex}.name`, existingCompany.name);
+        setValue(`companies.${currentIndex}.website`, existingCompany.website);
       }
+    } else {
+      // If the company does not exist, add it to the database
+      const { data, error } = await supabase
+        .from('companies')
+        .insert([{ name: newCompanyName, website: newCompanyWebsite }])
+        .select();
 
-      // Reset dialog state
-      setIsNewCompanyDialogOpen(false);
-      setNewCompanyName('');
-      setNewCompanyWebsite('');
-      setCurrentIndex(null);
-      setSearchQuery('');
+      if (error) {
+        console.error('Error adding company:', error);
+      } else if (data && data[0]) {
+        const newCompany = data[0];
+        
+        // Update both companies and filtered companies lists
+        setCompanies(prevCompanies => [...prevCompanies, newCompany]);
+        setFilteredCompanies(prevFiltered => [...prevFiltered, newCompany]);
+
+        // Update form data if we have a current index
+        if (currentIndex !== null) {
+          setValue(`companies.${currentIndex}.companyId`, newCompany.id);
+          setValue(`companies.${currentIndex}.name`, newCompany.name);
+          setValue(`companies.${currentIndex}.website`, newCompany.website);
+        }
+      }
     }
+
+    // Reset dialog state
+    setIsNewCompanyDialogOpen(false);
+    setNewCompanyName('');
+    setNewCompanyWebsite('');
+    setCurrentIndex(null);
+    setSearchQuery('');
   };
 
   // Handle search input change
@@ -158,7 +173,7 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
                       </SelectContent>
                     </Select>
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage>{(errors.companies as any)?.[index]?.companyId?.message}</FormMessage>
                 </FormItem>
               )}
             />
@@ -174,7 +189,7 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
                       <FormControl>
                         <Input {...field} className="text-lg p-6" />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage>{(errors.companies as any)?.[index]?.name?.message}</FormMessage>
                     </FormItem>
                   )}
                 />
@@ -188,10 +203,12 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
                       <FormControl>
                         <Input type="url" {...field} className="text-lg p-6" />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage>{(errors.companies as any)?.[index]?.website?.message}</FormMessage>
                     </FormItem>
                   )}
                 />
+
+                {/* Removed description field */}
               </>
             )}
 
@@ -204,7 +221,7 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
                   <FormControl>
                     <Input {...field} className="text-lg p-6" />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage>{(errors.companies as any)?.[index]?.role?.message}</FormMessage>
                 </FormItem>
               )}
             />
@@ -219,7 +236,7 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
                     <FormControl>
                       <Input type="date" {...field} className="text-lg p-6" />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage>{(errors.companies as any)?.[index]?.startDate?.message}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -234,7 +251,7 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
                       <FormControl>
                         <Input type="date" {...field} className="text-lg p-6" />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage>{(errors.companies as any)?.[index]?.endDate?.message}</FormMessage>
                     </FormItem>
                   )}
                 />
@@ -280,6 +297,7 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
               value={newCompanyWebsite}
               onChange={(e) => setNewCompanyWebsite(e.target.value)}
             />
+            {/* Removed description input */}
             <Button type="button" onClick={handleAddNewCompany}>
               Add Company
             </Button>
