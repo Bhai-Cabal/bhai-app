@@ -81,7 +81,13 @@ const Step4: React.FC<Step4Props> = ({
     platform => !selectedPlatforms.includes(platform.toLowerCase())
   );
 
-  const filteredRoles = roles.filter(role => 
+  const selectedRoles = watch('roles').map((role: { name: string }) => role.name.toLowerCase());
+  const availableRoles = roles.filter(role => !selectedRoles.includes(role.name.toLowerCase()));
+
+  const selectedSkillsNames = selectedSkills.map(skill => skill.name.toLowerCase());
+  const availableSkills = skills.filter(skill => !selectedSkillsNames.includes(skill.name.toLowerCase()));
+
+  const filteredRoles = availableRoles.filter(role => 
     role.name.toLowerCase().includes(roleInput.toLowerCase())
   );
 
@@ -164,7 +170,7 @@ const Step4: React.FC<Step4Props> = ({
     removeSkill(skill);
   };
 
-  const filteredSkills = skills.filter(skill => 
+  const filteredSkills = availableSkills.filter(skill => 
     skill.name.toLowerCase().includes(skillInputState.toLowerCase())
   );
 
@@ -218,7 +224,7 @@ const Step4: React.FC<Step4Props> = ({
                       </SelectContent>
                     </Select>
                   </FormControl>
-                  <FormMessage>{errors.digitalIdentities?.[index]?.platform?.message}</FormMessage>
+                  <FormMessage>{(errors.digitalIdentities as any)?.[index]?.platform?.message}</FormMessage>
                 </FormItem>
               )}
             />
@@ -234,7 +240,7 @@ const Step4: React.FC<Step4Props> = ({
                       className="text-lg p-3"
                     />
                   </FormControl>
-                  <FormMessage>{errors.digitalIdentities?.[index]?.identifier?.message}</FormMessage>
+                  <FormMessage>{(errors.digitalIdentities as any)?.[index]?.identifier?.message}</FormMessage>
                 </FormItem>
               )}
             />

@@ -75,7 +75,7 @@ const Step5: React.FC<Step5Props> = ({
                       </SelectContent>
                     </Select>
                   </FormControl>
-                  <FormMessage>{errors.walletAddresses?.[index]?.blockchain?.message}</FormMessage>
+                  <FormMessage>{(errors.walletAddresses as any)?.[index]?.blockchain?.message}</FormMessage>
                 </FormItem>
               )}
             />
@@ -91,7 +91,7 @@ const Step5: React.FC<Step5Props> = ({
                       className="text-lg p-3"
                     />
                   </FormControl>
-                  <FormMessage>{errors.walletAddresses?.[index]?.address?.message}</FormMessage>
+                  <FormMessage>{(errors.walletAddresses as any)?.[index]?.address?.message}</FormMessage>
                 </FormItem>
               )}
             />

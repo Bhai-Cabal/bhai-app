@@ -14,6 +14,8 @@ import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { z } from 'zod';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface Company {
   id: string;
@@ -27,6 +29,8 @@ interface Step3Props {
   removeCompany: (index: number) => void;
 }
 
+const websiteSchema = z.string().url('Invalid URL');
+
 const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
   const { control, watch, setValue, formState: { errors } } = useFormContext();
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -37,6 +41,7 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
   const [newCompanyDescription, setNewCompanyDescription] = useState('');
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [alert, setAlert] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
 
   // Fetch companies from Supabase on component mount
   useEffect(() => {
@@ -56,13 +61,24 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
 
   // Handle adding a new company to the database
   const handleAddNewCompany = async () => {
+    // Validate website URL
+    const websiteValidation = websiteSchema.safeParse(newCompanyWebsite);
+    if (!websiteValidation.success) {
+      setAlert({ type: 'error', message: websiteValidation.error.errors[0].message });
+      return;
+    }
+
     // Check if the company already exists in the database
-    const existingCompany = companies.find(company => company.name === newCompanyName && company.website === newCompanyWebsite);
+    const existingCompany: Company | undefined = companies.find(company => company.name === newCompanyName && company.website === newCompanyWebsite);
+    if (existingCompany) {
+      setAlert({ type: 'error', message: 'Company with this name and website already exists.' });
+      return;
+    }
     
     if (existingCompany) {
       // If the company already exists, update the form data with the existing company details
       if (currentIndex !== null) {
-        setValue(`companies.${currentIndex}.companyId`, existingCompany.id);
+        setValue(`companies.${currentIndex}.companyId`, (existingCompany as Company).id);
         setValue(`companies.${currentIndex}.name`, existingCompany.name);
         setValue(`companies.${currentIndex}.website`, existingCompany.website);
       }
@@ -74,7 +90,7 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
         .select();
 
       if (error) {
-        console.error('Error adding company:', error);
+        setAlert({ type: 'error', message: 'Error adding company.' });
       } else if (data && data[0]) {
         const newCompany = data[0];
         
@@ -88,6 +104,7 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
           setValue(`companies.${currentIndex}.name`, newCompany.name);
           setValue(`companies.${currentIndex}.website`, newCompany.website);
         }
+        setAlert({ type: 'success', message: 'Company added successfully.' });
       }
     }
 
@@ -110,6 +127,12 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
 
   return (
     <div className="space-y-6">
+      {alert && (
+        <Alert variant={alert.type === 'error' ? 'destructive' : 'default'}>
+          <AlertTitle>{alert.type === 'error' ? 'Error' : 'Success'}</AlertTitle>
+          <AlertDescription>{alert.message}</AlertDescription>
+        </Alert>
+      )}
       <div>
         <FormLabel>Work Experience</FormLabel>
         <FormDescription>
