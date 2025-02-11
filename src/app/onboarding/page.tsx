@@ -206,14 +206,9 @@ const OnboardingPage: React.FC = () => {
           if (company.endDate && new Date(company.startDate) > new Date(company.endDate)) {
             throw new Error('Start date must be before end date');
           }
-          const { data, error } = await supabase.from('companies').insert({
-            name: company.name,
-            website: company.website,
-          }).select();
-          if (error) throw error;
           return supabase.from('user_companies').insert({
             user_id: userUUID,
-            company_id: data[0].id,
+            company_id: company.companyId,
             role: company.role,
             start_date: company.startDate || null,
             end_date: company.endDate || null,

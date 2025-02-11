@@ -16,6 +16,7 @@ export interface Skill {
 }
 
 export interface Company {
+  companyId?: string; // Added companyId
   name: string;
   website: string;
   role: string;
@@ -50,6 +51,7 @@ export const formSchema = z.object({
   cryptoEntryDate: z.string().nonempty('Crypto entry date is required'),
   companies: z.array(
     z.object({
+      companyId: z.string().optional(), // Added companyId  
       name: z.string().nonempty('Company name is required'),
       website: z.string().url('Invalid URL').optional(),
       role: z.string().nonempty('Role is required'),

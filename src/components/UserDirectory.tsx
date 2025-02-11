@@ -55,7 +55,7 @@ export function UserDirectory() {
         digital_identities:digital_identities(platform, identifier),
         wallet_addresses:wallet_addresses(blockchain, address)
       `)
-      .neq('auth_id', userId); 
+      // .neq('auth_id', userId); 
 
     if (filters.skills) {
       query = query.contains("skill_ids", `{${filters.skills}}`);

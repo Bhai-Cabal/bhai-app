@@ -14,8 +14,8 @@ import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { z } from 'zod';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { z } from 'zod';
 
 interface Company {
   id: string;
@@ -41,7 +41,7 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
   const [newCompanyDescription, setNewCompanyDescription] = useState('');
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [alert, setAlert] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
+  const [alert, setAlert] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   // Fetch companies from Supabase on component mount
   useEffect(() => {
@@ -69,43 +69,36 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
     }
 
     // Check if the company already exists in the database
-    const existingCompany: Company | undefined = companies.find(company => company.name === newCompanyName && company.website === newCompanyWebsite);
+    const existingCompany = companies.find(company => company.name === newCompanyName && company.website === newCompanyWebsite);
     if (existingCompany) {
       setAlert({ type: 'error', message: 'Company with this name and website already exists.' });
       return;
     }
-    
-    if (existingCompany) {
-      // If the company already exists, update the form data with the existing company details
+
+    // If the company does not exist, add it to the database
+    const { data, error } = await supabase
+      .from('companies')
+      .insert([{ name: newCompanyName, website: newCompanyWebsite }])
+      .select();
+
+    if (error) {
+      console.error('Error adding company:', error);
+      setAlert({ type: 'error', message: 'Error adding company.' });
+    } else if (data && data[0]) {
+      const newCompany = data[0];
+
+      // Update both companies and filtered companies lists
+      setCompanies(prevCompanies => [...prevCompanies, newCompany]);
+      setFilteredCompanies(prevFiltered => [...prevFiltered, newCompany]);
+
+      // Update form data if we have a current index
       if (currentIndex !== null) {
-        setValue(`companies.${currentIndex}.companyId`, (existingCompany as Company).id);
-        setValue(`companies.${currentIndex}.name`, existingCompany.name);
-        setValue(`companies.${currentIndex}.website`, existingCompany.website);
+        setValue(`companies.${currentIndex}.companyId`, newCompany.id);
+        setValue(`companies.${currentIndex}.name`, newCompany.name);
+        setValue(`companies.${currentIndex}.website`, newCompany.website);
       }
-    } else {
-      // If the company does not exist, add it to the database
-      const { data, error } = await supabase
-        .from('companies')
-        .insert([{ name: newCompanyName, website: newCompanyWebsite }])
-        .select();
 
-      if (error) {
-        setAlert({ type: 'error', message: 'Error adding company.' });
-      } else if (data && data[0]) {
-        const newCompany = data[0];
-        
-        // Update both companies and filtered companies lists
-        setCompanies(prevCompanies => [...prevCompanies, newCompany]);
-        setFilteredCompanies(prevFiltered => [...prevFiltered, newCompany]);
-
-        // Update form data if we have a current index
-        if (currentIndex !== null) {
-          setValue(`companies.${currentIndex}.companyId`, newCompany.id);
-          setValue(`companies.${currentIndex}.name`, newCompany.name);
-          setValue(`companies.${currentIndex}.website`, newCompany.website);
-        }
-        setAlert({ type: 'success', message: 'Company added successfully.' });
-      }
+      setAlert({ type: 'success', message: 'Company added successfully.' });
     }
 
     // Reset dialog state
@@ -128,8 +121,8 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
   return (
     <div className="space-y-6">
       {alert && (
-        <Alert variant={alert.type === 'error' ? 'destructive' : 'default'}>
-          <AlertTitle>{alert.type === 'error' ? 'Error' : 'Success'}</AlertTitle>
+        <Alert variant={alert.type === 'success' ? 'default' : 'destructive'}>
+          <AlertTitle>{alert.type === 'success' ? 'Success' : 'Error'}</AlertTitle>
           <AlertDescription>{alert.message}</AlertDescription>
         </Alert>
       )}
