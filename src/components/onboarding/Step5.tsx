@@ -88,7 +88,7 @@ const Step5: React.FC<Step5Props> = ({
                 <FormItem className="flex-1">
                   <FormControl>
                     <Input
-                      placeholder="Enter your wallet address"
+                      placeholder="0x..."
                       {...field}
                       className="text-lg p-3"
                     />

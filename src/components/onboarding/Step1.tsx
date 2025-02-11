@@ -10,9 +10,11 @@ interface Step1Props {
   handleUsernameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   imagePreview: string | null;
+  userEmail: string | null;
+  isWalletLogin: boolean;
 }
 
-const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, handleImageChange, imagePreview }) => {
+const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, handleImageChange, imagePreview, userEmail, isWalletLogin }) => {
   const { control, formState: { errors } } = useFormContext();
 
   return (
@@ -34,6 +36,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                 minLength={3}
                 maxLength={50}
                 onChange={handleUsernameChange}
+                value={field.value || ''}
               />
             </FormControl>
             {isUsernameTaken && <p className="text-red-500">Username is already taken</p>}
@@ -57,6 +60,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                 {...field}
                 className="text-lg p-6"
                 maxLength={100}
+                value={field.value || ''}
               />
             </FormControl>
             <FormMessage>{typeof errors.fullName?.message === 'string' ? errors.fullName?.message : null}</FormMessage>
@@ -79,13 +83,37 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                 className="min-h-[100px] text-lg p-6"
                 maxLength={500}
                 {...field}
-                value={typeof field.value === 'string' ? field.value : ''}
+                value={field.value || ''}
               />
             </FormControl>
             <FormMessage>{typeof errors.bio?.message === 'string' ? errors.bio?.message : null}</FormMessage>
           </FormItem>
         )}
       />
+
+      {isWalletLogin && (
+        <Controller
+          name="email"
+          control={control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormDescription>
+                Your email address
+              </FormDescription>
+              <FormControl>
+                <Input
+                  placeholder="example@example.com"
+                  {...field}
+                  className="text-lg p-6"
+                  value={field.value || ''}
+                />
+              </FormControl>
+              <FormMessage>{typeof errors.email?.message === 'string' ? errors.email?.message : null}</FormMessage>
+            </FormItem>
+          )}
+        />
+      )}
 
       <Controller
         name="profilePicture"

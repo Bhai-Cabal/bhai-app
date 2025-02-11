@@ -129,6 +129,11 @@ const OnboardingPage: React.FC = () => {
     event.preventDefault();
     const values = form.getValues();
 
+    if (isWalletLogin && !values.email) {
+      setError('Email is required when logging in with a wallet.');
+      return;
+    }
+
     const walletAddresses = form.getValues('walletAddresses');
     const hasEthereum = walletAddresses.some(wallet => wallet.blockchain.toLowerCase() === 'ethereum');
     const hasSolana = walletAddresses.some(wallet => wallet.blockchain.toLowerCase() === 'solana');
@@ -154,7 +159,7 @@ const OnboardingPage: React.FC = () => {
         username: values.username,
         full_name: values.fullName,
         bio: values.bio,
-        email: user.email?.address,
+        email: values.email || user.email?.address, // Ensure email is provided
         location: selectedLocation,
         birthday: values.birthday,
         crypto_entry_date: values.cryptoEntryDate,
@@ -579,6 +584,9 @@ const OnboardingPage: React.FC = () => {
     };
   }, []);
 
+  const userEmail = user?.email?.address ?? null;
+  const isWalletLogin = !userEmail;
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -588,6 +596,8 @@ const OnboardingPage: React.FC = () => {
             handleUsernameChange={handleUsernameChange}
             handleImageChange={handleImageChange}
             imagePreview={imagePreview}
+            userEmail={userEmail}
+            isWalletLogin={isWalletLogin}
           />
         );
       case 2:

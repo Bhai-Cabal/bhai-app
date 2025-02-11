@@ -91,6 +91,8 @@ export const formSchema = z.object({
       name: z.string(),
     })
   ),
+  email: z.string().email('Invalid email address').optional(), // Added email validation
+  walletAddress: z.string().optional(), // Added wallet address validation
 });
 
 export type OnboardingFormValues = z.infer<typeof formSchema>;
