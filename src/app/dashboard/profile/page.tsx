@@ -376,7 +376,7 @@ export default function ProfilePage() {
           </Card>
 
           <Card className="p-6">
-            <Step4
+            {/* <Step4
               PLATFORMS={['Twitter', 'GitHub', 'LinkedIn', 'Discord', 'Telegram', 'Medium']}
               roles={roles}
               skills={skillsData}
@@ -394,18 +394,18 @@ export default function ProfilePage() {
               skillInput={skillInput}
               skillSuggestions={skillSuggestions}
               selectedSkills={selectedSkills}
-            />
+            /> */}
           </Card>
 
           <Card className="p-6">
-            <Step5
+            {/* <Step5
               BLOCKCHAINS={['Ethereum', 'Polygon', 'Solana', 'Bitcoin', 'Arbitrum', 'Optimism']}
               newBlockchain={newBlockchain}
               setNewBlockchain={setNewBlockchain}
               handleBlockchainChange={() => {}}
               removeWallet={() => {}}
               addWallet={() => {}}
-            />
+            /> */}
           </Card>
 
           <Button type="submit" disabled={isLoading}>

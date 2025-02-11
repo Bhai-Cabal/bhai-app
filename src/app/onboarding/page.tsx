@@ -603,28 +603,26 @@ const OnboardingPage: React.FC = () => {
         return <Step3 addCompany={addCompany} removeCompany={removeCompany} />;
       case 4:
         return (
-          <>
-            <Step4
-              PLATFORMS={PLATFORMS}
-              roles={roles}
-              skills={skills}
-              newPlatform={newPlatform}
-              setNewPlatform={setNewPlatform}
-              handlePlatformChange={handlePlatformChange}
-              handleRoleChange={handleRoleChange}
-              handleSkillInputChange={handleSkillInputChange}
-              handleSkillSelect={handleSkillSelect}
-              removeIdentity={removeIdentity}
-              removeRole={removeRole}
-              removeSkill={removeSkill}
-              addIdentity={addIdentity}
-              addRole={addRole}
-              skillInput={skillInput}
-              skillSuggestions={skillSuggestions}
-              selectedSkills={selectedSkills} 
-              identityWarning={identityWarning ? 'Twitter and Telegram accounts are mandatory.' : ''} />
-            
-          </>
+          <Step4
+            PLATFORMS={PLATFORMS}
+            roles={roles}
+            skills={skills}
+            newPlatform={newPlatform}
+            setNewPlatform={setNewPlatform}
+            handlePlatformChange={handlePlatformChange}
+            handleRoleChange={handleRoleChange}
+            handleSkillInputChange={handleSkillInputChange}
+            handleSkillSelect={handleSkillSelect}
+            removeIdentity={removeIdentity}
+            removeRole={removeRole}
+            removeSkill={removeSkill}
+            addIdentity={addIdentity}
+            addRole={addRole}
+            skillInput={skillInput}
+            skillSuggestions={skillSuggestions}
+            selectedSkills={selectedSkills}
+            identityWarning={identityWarning ? 'Twitter and Telegram accounts are mandatory.' : ''} // Pass identityWarning prop
+          />
         );
       case 5:
         return (
@@ -635,7 +633,7 @@ const OnboardingPage: React.FC = () => {
             handleBlockchainChange={handleBlockchainChange}
             removeWallet={removeWallet}
             addWallet={addWallet}
-            walletWarning={walletWarning ? 'Ethereum and Solana wallet addresses are mandatory.' : ''}
+            walletWarning={walletWarning ? 'Ethereum and Solana wallet addresses are mandatory.' : ''} // Pass walletWarning prop
           />
         );
       default:
