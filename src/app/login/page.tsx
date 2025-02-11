@@ -16,7 +16,8 @@ export default function LoginPage() {
   useEffect(() => {
     const handleRedirect = async () => {
       if (ready && authenticated && user) {
-        const isRegistered = await checkUserRegistered(user.id);
+        
+        const isRegistered = await checkUserRegistered(user.id, user.email?.address ?? ""); // Check if the user is registered
         if (isRegistered) {
           router.push("/dashboard");
         } else {
