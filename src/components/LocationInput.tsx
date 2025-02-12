@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from './ui/input';
+import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from './ui/select';
 
 interface LocationInputProps {
   selectedLocation: string;
@@ -15,22 +16,19 @@ interface LocationResult {
 export const LocationInput: React.FC<LocationInputProps> = ({ selectedLocation, setSelectedLocation }) => {
   const [query, setQuery] = useState(selectedLocation || '');
   const [results, setResults] = useState<LocationResult[]>([]);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (query && query !== selectedLocation) {
-        handleSearch();
-      }
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [query, selectedLocation]);
+    if (query) {
+      handleSearch();
+    }
+  }, [query]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setResults([]);
+        setIsInputFocused(false);
       }
     };
 
@@ -53,6 +51,7 @@ export const LocationInput: React.FC<LocationInputProps> = ({ selectedLocation, 
     setQuery(result.display_name);
     setSelectedLocation(result.display_name);
     setResults([]);
+    setIsInputFocused(false);
   };
 
   return (
@@ -62,20 +61,22 @@ export const LocationInput: React.FC<LocationInputProps> = ({ selectedLocation, 
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Enter a location"
-        className="w-full p-3 border rounded-lg"
+        className="w-full p-3 border rounded-lg dark:bg-black dark:border-gray-700 dark:text-white"
+        onFocus={() => setIsInputFocused(true)}
+        onBlur={() => setTimeout(() => setIsInputFocused(false), 200)}
       />
-      {results.length > 0 && (
-        <ul className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg">
+      {isInputFocused && results.length > 0 && (
+        <div className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg dark:bg-black dark:border-gray-700">
           {results.map((result) => (
-            <li
+            <div
               key={result.place_id}
-              className="p-3 hover:bg-gray-100 cursor-pointer"
+              className="p-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white"
               onClick={() => handleSelect(result)}
             >
               {result.display_name}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

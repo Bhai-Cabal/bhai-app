@@ -219,7 +219,7 @@ const Step4: React.FC<Step4Props> = ({
                             placeholder="Add new platform"
                             value={newPlatform}
                             onChange={(e) => setNewPlatform(e.target.value)}
-                            className="text-lg p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="text-lg p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary dark:bg-black dark:border-gray-700 dark:text-white"
                           />
                         </div>
                         {newPlatform && (
@@ -243,7 +243,7 @@ const Step4: React.FC<Step4Props> = ({
                     <Input
                       placeholder="Enter your profile link or identifier"
                       {...field}
-                      className="text-lg p-3"
+                      className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
                     />
                   </FormControl>
                   <FormMessage>{(errors.digitalIdentities as any)?.[index]?.identifier?.message}</FormMessage>
@@ -285,7 +285,7 @@ const Step4: React.FC<Step4Props> = ({
               <Input
                 placeholder="Enter role"
                 value={roleInput}
-                className="text-lg p-3"
+                className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
                 onChange={(e) => setRoleInput(e.target.value)}
                 onFocus={() => setIsRoleInputFocused(true)}
                 onBlur={() => setTimeout(() => setIsRoleInputFocused(false), 200)}
@@ -293,11 +293,11 @@ const Step4: React.FC<Step4Props> = ({
             </FormControl>
           </FormItem>
           {isRoleInputFocused && (
-            <div className="bg-white border rounded shadow-md">
+            <div className="bg-white border rounded shadow-md dark:bg-black dark:border-gray-700">
               {filteredRoles.map((role) => (
                 <div
                   key={role.name}
-                  className="p-2 cursor-pointer hover:bg-gray-200"
+                  className="p-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white"
                   onClick={() => {
                     const currentRoles = watch('roles');
                     setValue('roles', [...currentRoles, { name: role.name, id: role.id }]);
@@ -308,7 +308,7 @@ const Step4: React.FC<Step4Props> = ({
                 </div>
               ))}
               <div
-                className="p-2 cursor-pointer hover:bg-gray-200"
+                className="p-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white"
                 onClick={() => setIsAddingNewRole(true)}
               >
                 Other
@@ -318,12 +318,12 @@ const Step4: React.FC<Step4Props> = ({
         </div>
 
         {isAddingNewRole && (
-          <div className="space-y-4 p-4 border rounded">
+          <div className="space-y-4 p-4 border rounded dark:bg-black dark:border-gray-700">
             <Input
               placeholder="Role Name"
               value={newRoleDetails.name}
               onChange={(e) => handleNewRoleDetailsChange('name', e.target.value)}
-              className="text-lg p-3"
+              className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
             />
             <Select
               value={newRoleDetails.category}
@@ -344,7 +344,7 @@ const Step4: React.FC<Step4Props> = ({
               placeholder="Role Description (Optional)"
               value={newRoleDetails.description}
               onChange={(e) => handleNewRoleDetailsChange('description', e.target.value)}
-              className="text-lg p-3"
+              className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
             />
             <div className="flex gap-2">
               <Button 
@@ -367,7 +367,7 @@ const Step4: React.FC<Step4Props> = ({
 
         <div className="space-y-2">
           {watch('roles').map((role: any, index: number) => (
-            <div key={role.name} className="flex items-center justify-between p-2 border rounded">
+            <div key={role.name} className="flex items-center justify-between p-2 border rounded dark:bg-black dark:border-gray-700">
               <span>{role.name}</span>
               <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveRole(index)}>
                 <X className="h-4 w-4" />
@@ -392,7 +392,7 @@ const Step4: React.FC<Step4Props> = ({
               <Input
                 placeholder="Enter skill"
                 value={skillInputState}
-                className="text-lg p-3"
+                className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
                 onChange={(e) => setSkillInputState(e.target.value)}
                 onFocus={() => setIsSkillInputFocused(true)}
                 onBlur={() => setTimeout(() => setIsSkillInputFocused(false), 200)}
@@ -400,11 +400,11 @@ const Step4: React.FC<Step4Props> = ({
             </FormControl>
           </FormItem>
           {isSkillInputFocused && (
-            <div className="bg-white border rounded shadow-md">
+            <div className="bg-white border rounded shadow-md dark:bg-black dark:border-gray-700">
               {filteredSkills.map((skill) => (
                 <div
                   key={skill.name}
-                  className="p-2 cursor-pointer hover:bg-gray-200"
+                  className="p-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white"
                   onClick={() => {
                     const currentSkills = watch('skills');
                     setValue('skills', [...currentSkills, { name: skill.name, id: skill.id }]);
@@ -415,7 +415,7 @@ const Step4: React.FC<Step4Props> = ({
                 </div>
               ))}
               <div
-                className="p-2 cursor-pointer hover:bg-gray-200"
+                className="p-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white"
                 onClick={() => setIsAddingNewSkill(true)}
               >
                 Other
@@ -425,18 +425,18 @@ const Step4: React.FC<Step4Props> = ({
         </div>
 
         {isAddingNewSkill && (
-          <div className="space-y-4 p-4 border rounded">
+          <div className="space-y-4 p-4 border rounded dark:bg-black dark:border-gray-700">
             <Input
               placeholder="Skill Name"
               value={newSkillDetails.name}
               onChange={(e) => handleNewSkillDetailsChange('name', e.target.value)}
-              className="text-lg p-3"
+              className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
             />
             <Input
               placeholder="Skill Description (Optional)"
               value={newSkillDetails.description}
               onChange={(e) => handleNewSkillDetailsChange('description', e.target.value)}
-              className="text-lg p-3"
+              className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
             />
             <div className="flex gap-2">
               <Button 
@@ -459,7 +459,7 @@ const Step4: React.FC<Step4Props> = ({
 
         <div className="space-y-2">
           {watch('skills').map((skill: any, index: number) => (
-            <div key={skill.name} className="flex items-center justify-between p-2 border rounded">
+            <div key={skill.name} className="flex items-center justify-between p-2 border rounded dark:bg-black dark:border-gray-700">
               <span>{skill.name}</span>
               <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSkill(skill)}>
                 <X className="h-4 w-4" />
