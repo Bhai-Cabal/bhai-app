@@ -424,8 +424,8 @@ export function UserDirectory() {
           <div>
             <span className="font-medium">Roles:</span>
             <ul className="list-disc list-inside">
-              {user.roles?.length > 0 ? (
-                user.roles.map((role) => (
+              {user.roles.length > 0 ? (
+                user.roles?.map((role) => (
                   <li key={role.id}>{role.name}</li>
                 ))
               ) : (
