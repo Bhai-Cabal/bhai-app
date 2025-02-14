@@ -1,12 +1,10 @@
 "use client";
 
-
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserDirectory } from "@/components/UserDirectory";
 
 const UserDirectoryPage = () => {
-
   return (
     <div className="space-y-8">
       {/* Tabs for Directory and Analytics */}
@@ -31,8 +29,6 @@ const UserDirectoryPage = () => {
       </Tabs>
     </div>
   );
-}
+};
 
-
-
-export default UserDirectoryPage;           
+export default UserDirectoryPage;

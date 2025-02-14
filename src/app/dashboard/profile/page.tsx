@@ -10,13 +10,12 @@ import { Card } from "@/components/ui/card";
 import {
   FormItem,
   FormLabel,
-  FormDescription,
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import Step2 from "@/components/onboarding/Step2";
@@ -30,7 +29,14 @@ const profileSchema = z.object({
   fullName: z.string().min(2).max(100),
   bio: z.string().max(500).optional(),
   location: z.string().min(2).max(100),
-  birthday: z.string().optional(),
+  birthday: z.string().refine((date) => {
+    const today = new Date();
+    const birthDate = new Date(date);
+    const age = today.getFullYear() - birthDate.getFullYear();
+    return age >= 13 && age <= 100;
+  }, {
+    message: "You must be at least 13 years old and not older than 100 years.",
+  }).optional(),
   cryptoEntryDate: z.string().optional(),
   companies: z.array(z.object({
     companyId: z.string().optional(),
@@ -53,7 +59,10 @@ const profileSchema = z.object({
     id: z.string().optional(),
     name: z.string().optional(),
   })).optional(),
-  skills: z.array(z.string()).optional(),
+  skills: z.array(z.object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+  })).optional(),
   profilePicture: z.instanceof(File).optional(),
 });
 
@@ -96,14 +105,40 @@ export default function ProfilePage() {
     async function fetchProfile() {
       if (!user?.id) return;
 
+      setIsLoading(true);
       const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
+        .from("users")
+        .select(`
+          *,
+          companies: user_companies (
+            companyId: company_id,
+            name: companies(name),
+            website: companies(website),
+            role,
+            startDate: start_date,
+            endDate: end_date,
+            isCurrent: is_current
+          ),
+          digitalIdentities: digital_identities (
+            platform,
+            identifier
+          ),
+          walletAddresses: wallet_addresses (
+            blockchain,
+            address
+          )
+        `)
+        .eq("auth_id", user.id)
         .single();
 
       if (error) {
         console.error("Error fetching profile:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch profile. Please try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
         return;
       }
 
@@ -115,60 +150,128 @@ export default function ProfilePage() {
         birthday: data.birthday,
         cryptoEntryDate: data.crypto_entry_date,
         companies: data.companies || [],
-        digitalIdentities: data.digital_identities || [],
-        walletAddresses: data.wallet_addresses || [],
+        digitalIdentities: data.digitalIdentities || [],
+        walletAddresses: data.walletAddresses || [],
         roles: data.roles || [],
         skills: data.skills || [],
       });
 
-      // Fetch skills
-      const { data: skillsData, error: skillsError } = await supabase
-        .from("user_skills")
-        .select("skills(name)")
-        .eq("user_id", user.id);
+      // Fetch available skills
+      const { data: availableSkills, error: skillsError } = await supabase
+        .from("skills")
+        .select("id, name");
 
-      if (!skillsError && skillsData) {
-        const skillNames = skillsData.map((s: any) => s.skills.name);
-        setSkills(skillNames);
+      if (!skillsError && availableSkills) {
+        setSkillsData(availableSkills);
       }
+
+      // Fetch available roles
+      const { data: availableRoles, error: rolesError } = await supabase
+        .from("roles")
+        .select("id, name");
+
+      if (!rolesError && availableRoles) {
+        setRoles(availableRoles);
+      }
+
+      // Fetch selected skills
+      const { data: selectedSkillsData, error: selectedSkillsError } = await supabase
+        .from("skills")
+        .select("id, name")
+        .in("id", data.skill_ids);
+
+      if (!selectedSkillsError && selectedSkillsData) {
+        setSelectedSkills(selectedSkillsData);
+        form.setValue("skills", selectedSkillsData);
+      }
+
+      // Fetch selected roles
+      const { data: selectedRolesData, error: selectedRolesError } = await supabase
+        .from("roles")
+        .select("id, name")
+        .in("id", data.role_ids);
+
+      if (!selectedRolesError && selectedRolesData) {
+        form.setValue("roles", selectedRolesData);
+      }
+
+      setIsLoading(false);
     }
 
     fetchProfile();
-  }, [user?.id, form]);
+  }, [user?.id, form, toast]);
 
-  async function onSubmit(values: ProfileFormValues) {
+  async function onSubmitSection(section: keyof ProfileFormValues) {
     if (!user?.id) return;
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          username: values.username,
-          full_name: values.fullName,
-          bio: values.bio,
-          location: values.location,
-          birthday: values.birthday,
-          crypto_entry_date: values.cryptoEntryDate,
-          companies: values.companies,
-          digital_identities: values.digitalIdentities,
-          wallet_addresses: values.walletAddresses,
-          roles: values.roles,
-          skills: values.skills,
-        })
-        .eq("id", user.id);
+      const values = form.getValues();
+      const updateData: Partial<ProfileFormValues> = { [section]: values[section] };
 
-      if (error) throw error;
+      if (section === 'companies') {
+        // Update companies
+        await supabase.from('user_companies').delete().eq('user_id', user.id);
+        for (const company of values.companies ?? []) {
+          await supabase.from('user_companies').insert({
+            user_id: user.id,
+            company_id: company.companyId,
+            role: company.role,
+            start_date: company.startDate,
+            end_date: company.endDate,
+            is_current: company.isCurrent,
+          });
+        }
+      } else if (section === 'digitalIdentities') {
+        // Update digital identities
+        await supabase.from('digital_identities').delete().eq('user_id', user.id);
+        for (const identity of values.digitalIdentities ?? []) {
+          await supabase.from('digital_identities').insert({
+            user_id: user.id,
+            platform: identity.platform,
+            identifier: identity.identifier,
+          });
+        }
+      } else if (section === 'walletAddresses') {
+        // Update wallet addresses
+        await supabase.from('wallet_addresses').delete().eq('user_id', user.id);
+        for (const wallet of values.walletAddresses || []) {
+          await supabase.from('wallet_addresses').insert({
+            user_id: user.id,
+            blockchain: wallet.blockchain,
+            address: wallet.address,
+          });
+        }
+      } else if (section === 'roles' || section === 'skills') {
+        // Update roles or skills
+        const { error } = await supabase
+          .from("users")
+          .update({
+            role_ids: values.roles.map(role => role.id),
+            skill_ids: values.skills.map(skill => skill.id),
+          })
+          .eq("auth_id", user.id);
+
+        if (error) throw error;
+      } else {
+        // Update other fields
+        const { error } = await supabase
+          .from("users")
+          .update(updateData)
+          .eq("auth_id", user.id);
+
+        if (error) throw error;
+      }
 
       toast({
         title: "Profile updated",
-        description: "Your profile has been successfully updated.",
+        description: `Your ${section} has been successfully updated.`,
       });
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: `Failed to update ${section}. Please try again.`,
         variant: "destructive",
       });
     } finally {
@@ -179,6 +282,7 @@ export default function ProfilePage() {
   const addSkill = async () => {
     if (!newSkill.trim() || !user?.id) return;
 
+    setIsLoading(true);
     try {
       // First, ensure the skill exists in the skills table
       const { data: skillData, error: skillError } = await supabase
@@ -198,17 +302,18 @@ export default function ProfilePage() {
 
       const skillId = skillData?.id || existingSkill?.id;
 
-      // Add the user-skill relationship
-      const { error: relationError } = await supabase
-        .from("user_skills")
-        .insert({
-          user_id: user.id,
-          skill_id: skillId,
-        });
+      // Add the skill to the user's skill_ids array
+      const updatedSkills = [...selectedSkills, { id: skillId, name: newSkill }];
+      setSelectedSkills(updatedSkills);
 
-      if (relationError) throw relationError;
+      // Update the user's skill_ids in the database
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ skill_ids: updatedSkills.map(skill => skill.id) })
+        .eq("auth_id", user.id);
 
-      setSkills([...skills, newSkill]);
+      if (updateError) throw updateError;
+
       setNewSkill("");
 
       toast({
@@ -222,12 +327,15 @@ export default function ProfilePage() {
         description: "Failed to add skill. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const removeSkill = async (skillName: string) => {
     if (!user?.id) return;
 
+    setIsLoading(true);
     try {
       const { data: skillData } = await supabase
         .from("skills")
@@ -236,15 +344,17 @@ export default function ProfilePage() {
         .single();
 
       if (skillData) {
+        const updatedSkills = selectedSkills.filter(s => s.name !== skillName);
+
+        // Update the user's skill_ids in the database
         const { error } = await supabase
-          .from("user_skills")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("skill_id", skillData.id);
+          .from("users")
+          .update({ skill_ids: updatedSkills.map(skill => skill.id) })
+          .eq("auth_id", user.id);
 
         if (error) throw error;
 
-        setSkills(skills.filter(s => s !== skillName));
+        setSelectedSkills(updatedSkills);
 
         toast({
           title: "Skill removed",
@@ -258,6 +368,8 @@ export default function ProfilePage() {
         description: "Failed to remove skill. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -293,127 +405,143 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-3xl font-bold mb-8">Edit Profile</h1>
 
-      <FormProvider {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card className="p-6">
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Controller
-                  name="username"
-                  control={form.control}
-                  render={({ field }) => <Input {...field} />}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel>Full Name</FormLabel>
-              <FormControl>
-                <Controller
-                  name="fullName"
-                  control={form.control}
-                  render={({ field }) => <Input {...field} />}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel>Bio</FormLabel>
-              <FormControl>
-                <Controller
-                  name="bio"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Textarea
-                      placeholder="Tell us about yourself..."
-                      className="resize-none"
-                      {...field}
-                    />
-                  )}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-
-            <FormItem>
-              <FormLabel>Profile Picture</FormLabel>
-              <FormControl>
-                <div className="space-y-4">
-                  <Input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleImageChange}
-                    className="text-lg p-6"
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-12 w-12 animate-spin" />
+        </div>
+      ) : (
+        <FormProvider {...form}>
+          <form className="space-y-6">
+            <Card className="p-6 space-y-4">
+              <FormItem>
+                <FormLabel>Username</FormLabel>
+                <FormControl>
+                  <Controller
+                    name="username"
+                    control={form.control}
+                    render={({ field }) => <Input {...field} />}
                   />
-                  {imagePreview && (
-                    <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-primary">
-                      <img src={imagePreview} alt="Profile preview" className="object-cover" />
-                    </div>
-                  )}
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </Card>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
 
-          <Card className="p-6">
-            <Step2
-              selectedLocation={selectedLocation}
-              setSelectedLocation={setSelectedLocation}
-              getMaxDate={() => new Date().toISOString().split('T')[0]}
-              getMinDate={() => new Date().toISOString().split('T')[0]}
-            />
-          </Card>
+              <FormItem>
+                <FormLabel>Full Name</FormLabel>
+                <FormControl>
+                  <Controller
+                    name="fullName"
+                    control={form.control}
+                    render={({ field }) => <Input {...field} />}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
 
-          <Card className="p-6">
-            <Step3 addCompany={() => {}} removeCompany={() => {}} />
-          </Card>
+              <FormItem>
+                <FormLabel>Bio</FormLabel>
+                <FormControl>
+                  <Controller
+                    name="bio"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Textarea
+                        placeholder="Tell us about yourself..."
+                        className="resize-none"
+                        {...field}
+                      />
+                    )}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
 
-          <Card className="p-6">
-            {/* <Step4
-              PLATFORMS={['Twitter', 'GitHub', 'LinkedIn', 'Discord', 'Telegram', 'Medium']}
-              roles={roles}
-              skills={skillsData}
-              newPlatform={newPlatform}
-              setNewPlatform={setNewPlatform}
-              handlePlatformChange={() => {}}
-              handleRoleChange={() => {}}
-              handleSkillInputChange={() => {}}
-              handleSkillSelect={() => {}}
-              removeIdentity={() => {}}
-              removeRole={() => {}}
-              removeSkill={() => {}}
-              addIdentity={() => {}}
-              addRole={() => {}}
-              skillInput={skillInput}
-              skillSuggestions={skillSuggestions}
-              selectedSkills={selectedSkills}
-            /> */}
-          </Card>
+              <FormItem>
+                <FormLabel>Profile Picture</FormLabel>
+                <FormControl>
+                  <div className="space-y-4">
+                    <Input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleImageChange}
+                      className="text-lg p-6"
+                    />
+                    {imagePreview && (
+                      <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-primary">
+                        <img src={imagePreview} alt="Profile preview" className="object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+              <Button type="button" onClick={() => onSubmitSection('username')}>
+                Save Basic Info
+              </Button>
+            </Card>
 
-          <Card className="p-6">
-            {/* <Step5
-              BLOCKCHAINS={['Ethereum', 'Polygon', 'Solana', 'Bitcoin', 'Arbitrum', 'Optimism']}
-              newBlockchain={newBlockchain}
-              setNewBlockchain={setNewBlockchain}
-              handleBlockchainChange={() => {}}
-              removeWallet={() => {}}
-              addWallet={() => {}}
-            /> */}
-          </Card>
+            <Card className="p-6">
+              <Step2
+                selectedLocation={selectedLocation}
+                setSelectedLocation={setSelectedLocation}
+                getMaxDate={() => new Date().toISOString().split('T')[0]}
+                getMinDate={() => new Date().toISOString().split('T')[0]}
+              />
+              <Button type="button" onClick={() => onSubmitSection('location')}>
+                Save Location and Birthday
+              </Button>
+            </Card>
 
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </form>
-      </FormProvider>
+            <Card className="p-6">
+              <Step3 addCompany={() => {}} removeCompany={() => {}} />
+              <Button type="button" onClick={() => onSubmitSection('companies')}>
+                Save Work Experience
+              </Button>
+            </Card>
+
+            <Card className="p-6">
+              <Step4
+                PLATFORMS={['Twitter', 'GitHub', 'LinkedIn', 'Discord', 'Telegram', 'Medium']}
+                roles={roles}
+                skills={skillsData}
+                newPlatform={newPlatform}
+                setNewPlatform={setNewPlatform}
+                handlePlatformChange={() => {}}
+                handleRoleChange={() => {}}
+                handleSkillInputChange={() => {}}
+                handleSkillSelect={() => {}}
+                removeIdentity={() => {}}
+                removeRole={() => {}}
+                removeSkill={() => {}}
+                addIdentity={() => {}}
+                addRole={() => {}}
+                skillInput={skillInput}
+                skillSuggestions={skillSuggestions}
+                selectedSkills={selectedSkills}
+              />
+              <Button type="button" onClick={() => onSubmitSection('digitalIdentities')}>
+                Save Digital Identities and Skills
+              </Button>
+            </Card>
+
+            <Card className="p-6">
+              <Step5
+                BLOCKCHAINS={['Ethereum', 'Polygon', 'Solana', 'Bitcoin', 'Arbitrum', 'Optimism']}
+                newBlockchain={newBlockchain}
+                setNewBlockchain={setNewBlockchain}
+                handleBlockchainChange={() => {}}
+                removeWallet={() => {}}
+                addWallet={() => {}}
+              />
+              <Button type="button" onClick={() => onSubmitSection('walletAddresses')}>
+                Save Wallet Addresses
+              </Button>
+            </Card>
+          </form>
+        </FormProvider>
+      )}
     </div>
   );
 }
