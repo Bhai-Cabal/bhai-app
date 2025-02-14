@@ -237,7 +237,7 @@ export function UserDirectory() {
               skills: skills.data || [],
               roles: roles.data || [],
               companies: user.user_companies?.map(uc => ({
-                name: uc.companies?.name || '',
+                name: uc.companies?.[0]?.name || '',
                 role: uc.role
               })) || [],
               profile_picture_url: profilePicture?.data.publicUrl
@@ -412,8 +412,8 @@ export function UserDirectory() {
           <div>
             <span className="font-medium">Skills:</span>
             <ul className="list-disc list-inside">
-              {user.skills?.length > 0 ? (
-                user.skills.map((skill) => (
+              {(user.skills ?? []).length > 0 ? (
+                (user.skills ?? []).map((skill) => (
                   <li key={skill.id}>{skill.name}</li>
                 ))
               ) : (
@@ -424,7 +424,7 @@ export function UserDirectory() {
           <div>
             <span className="font-medium">Roles:</span>
             <ul className="list-disc list-inside">
-              {user.roles.length > 0 ? (
+              {user.roles && user.roles.length > 0 ? (
                 user.roles?.map((role) => (
                   <li key={role.id}>{role.name}</li>
                 ))
@@ -436,8 +436,8 @@ export function UserDirectory() {
           <div>
             <span className="font-medium">Companies:</span>
             <ul className="list-disc list-inside">
-              {user.companies?.length > 0 ? (
-                user.companies.map((company, index) => (
+              {(user.companies ?? []).length > 0 ? (
+                user.companies?.map((company, index) => (
                   <li key={index}>
                     {company.role} at {company.name}
                   </li>
