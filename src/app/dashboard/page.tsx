@@ -22,6 +22,16 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface DashboardStats {
   totalUsers: number;
@@ -39,6 +49,14 @@ interface UserProfile {
   current_tier: string;
   bq_score: number;
   crypto_entry_date: string;
+  avatarUrl: string;
+}
+
+interface ActivityItem {
+  id: string;
+  type: string;
+  description: string;
+  timestamp: string;
 }
 
 export default function DashboardPage() {
@@ -52,6 +70,8 @@ export default function DashboardPage() {
   });
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [trendData, setTrendData] = useState([]);
 
   useEffect(() => {
     if (user?.id) {
@@ -102,97 +122,150 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Top Navigation */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        
+        <Button variant="outline" onClick={() => setAccountDialogOpen(true)}>
+          <UserCircle className="mr-2 h-4 w-4" /> Update Profile
+        </Button>
       </div>
 
-      {/* Dashboard Content */}
-      <div className="grid gap-6">
-        {/* Profile Overview */}
-        <Card className="p-6">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h2 className="text-xl font-semibold">Profile Overview</h2>
-              <p className="text-sm text-muted-foreground">
-                Complete your profile to unlock more features
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => setAccountDialogOpen(true)}>
-              Update Profile
-            </Button>
-          </div>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
 
-          {profile && (
-            <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Profile Completion</p>
-                  <Progress 
-                    value={profile.profile_completion_percentage} 
-                    className="h-2"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    {profile.profile_completion_percentage}% Complete
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Current Tier</p>
-                  <p className="text-2xl font-bold capitalize">
-                    {profile.current_tier}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">BQ Score</p>
-                  <p className="text-2xl font-bold">{profile.bq_score}</p>
+        <TabsContent value="overview" className="space-y-6">
+          {/* Profile Card */}
+          <Card className="p-6">
+            <div className="flex items-start space-x-4">
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={profile?.avatarUrl || ''} />
+                <AvatarFallback>{profile?.full_name?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="space-y-2 flex-1">
+                <h2 className="text-2xl font-bold">{profile?.full_name}</h2>
+                <p className="text-muted-foreground">{profile?.bio}</p>
+                <div className="flex space-x-4">
+                  <div>
+                    <p className="text-sm font-medium">Member since</p>
+                    <p className="text-muted-foreground">{profile?.crypto_entry_date}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Location</p>
+                    <p className="text-muted-foreground">{profile?.location}</p>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
-        </Card>
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="p-4">
-            <div className="flex items-center space-x-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium">Total Users</h3>
+            <div className="mt-6 grid grid-cols-3 gap-4">
+              <Card className="p-4 bg-secondary">
+                <p className="text-sm font-medium">Profile Completion</p>
+                <Progress value={profile?.profile_completion_percentage} className="my-2" />
+                <p className="text-xs text-muted-foreground">{profile?.profile_completion_percentage}% Complete</p>
+              </Card>
+              
+              <Card className="p-4 bg-secondary">
+                <p className="text-sm font-medium">BQ Score</p>
+                <h3 className="text-2xl font-bold mt-2">{profile?.bq_score}</h3>
+                <p className="text-xs text-muted-foreground">Top {(profile?.bq_score ?? 0) > 80 ? '20%' : '50%'}</p>
+              </Card>
+
+              <Card className="p-4 bg-secondary">
+                <p className="text-sm font-medium">Current Tier</p>
+                <h3 className="text-2xl font-bold mt-2 capitalize">{profile?.current_tier}</h3>
+                <p className="text-xs text-muted-foreground">3 days to next tier</p>
+              </Card>
             </div>
-            <p className="text-2xl font-bold mt-2">{stats.totalUsers}</p>
           </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center space-x-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium">Companies</h3>
+          {/* Stats Grid */}
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card className="p-4">
+              <div className="flex items-center space-x-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-medium">Total Members</h3>
+              </div>
+              <p className="text-2xl font-bold mt-2">{stats.totalUsers}</p>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex items-center space-x-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-medium">Companies</h3>
+              </div>
+              <p className="text-2xl font-bold mt-2">{stats.totalCompanies}</p>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex items-center space-x-2">
+                <Briefcase className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-medium">Available Roles</h3>
+              </div>
+              <p className="text-2xl font-bold mt-2">{stats.totalRoles}</p>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex items-center space-x-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-medium">Your Connections</h3>
+              </div>
+              <p className="text-2xl font-bold mt-2">{stats.yourConnections}</p>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Engagement Trends</h3>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="connections" stroke="#8884d8" />
+                  <Line type="monotone" dataKey="messages" stroke="#82ca9d" />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-            <p className="text-2xl font-bold mt-2">{stats.totalCompanies}</p>
           </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center space-x-2">
-              <Briefcase className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium">Available Roles</h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Top Skills</h3>
+              {/* Add skills chart/list here */}
+            </Card>
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Industry Focus</h3>
+              {/* Add industry distribution chart here */}
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="activity" className="space-y-4">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+            <div className="space-y-4">
+              {activities.map((activity) => (
+                <div key={activity.id} className="flex items-center space-x-4 p-3 rounded-lg bg-secondary">
+                  <div className="flex-shrink-0">
+                    <Activity className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm">{activity.description}</p>
+                    <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="text-2xl font-bold mt-2">{stats.totalRoles}</p>
           </Card>
+        </TabsContent>
+      </Tabs>
 
-          <Card className="p-4">
-            <div className="flex items-center space-x-2">
-              <Activity className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium">Your Connections</h3>
-            </div>
-            <p className="text-2xl font-bold mt-2">{stats.yourConnections}</p>
-          </Card>
-        </div>
-
-       
-      </div>
-
-      {/* Account Dialog */}
       <AccountDialog
         open={accountDialogOpen}
         onClose={() => setAccountDialogOpen(false)}

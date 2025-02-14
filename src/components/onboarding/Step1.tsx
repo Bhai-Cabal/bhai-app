@@ -37,6 +37,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                 maxLength={50}
                 onChange={handleUsernameChange}
                 value={field.value || ''}
+                required
               />
             </FormControl>
             {isUsernameTaken && <p className="text-red-500">Username is already taken</p>}
@@ -61,6 +62,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                 className="text-lg p-6"
                 maxLength={100}
                 value={field.value || ''}
+                required
               />
             </FormControl>
             <FormMessage>{typeof errors.fullName?.message === 'string' ? errors.fullName?.message : null}</FormMessage>
@@ -84,6 +86,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                 maxLength={500}
                 {...field}
                 value={field.value || ''}
+                required
               />
             </FormControl>
             <FormMessage>{typeof errors.bio?.message === 'string' ? errors.bio?.message : null}</FormMessage>
@@ -107,6 +110,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                   {...field}
                   className="text-lg p-6"
                   value={field.value || ''}
+                  required
                 />
               </FormControl>
               <FormMessage>{typeof errors.email?.message === 'string' ? errors.email?.message : null}</FormMessage>

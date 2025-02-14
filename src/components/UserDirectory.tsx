@@ -377,7 +377,7 @@ export function UserDirectory() {
   const UserCard = ({ user }: { user: User }) => (
     <Dialog>
       <DialogTrigger asChild>
-        <Card className="p-4 cursor-pointer hover:bg-gray-100">
+        <Card className="p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">
           <div className="flex items-start space-x-4">
             <Avatar>
               {user.profile_picture_url ? (

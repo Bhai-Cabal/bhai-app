@@ -118,6 +118,35 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
     setFilteredCompanies(filtered);
   };
 
+  // Format date for input
+  const formatDate = (date: string | null): string => {
+    if (!date) return '';
+    try {
+      return new Date(date).toISOString().split('T')[0];
+    } catch (e) {
+      return '';
+    }
+  };
+
+  // Handle date changes
+  const handleDateChange = (index: number, field: 'startDate' | 'endDate', value: string | null) => {
+    setValue(`companies.${index}.${field}`, value, {
+      shouldValidate: true,
+      shouldDirty: true
+    });
+  };
+
+  // Handle current position checkbox
+  const handleCurrentPositionChange = (index: number, checked: boolean) => {
+    setValue(`companies.${index}.isCurrent`, checked, {
+      shouldValidate: true,
+      shouldDirty: true
+    });
+    if (checked) {
+      handleDateChange(index, 'endDate', null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {alert && (
@@ -126,11 +155,11 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
           <AlertDescription>{alert.message}</AlertDescription>
         </Alert>
       )}
-      <div>
-        <FormLabel>Work Experience</FormLabel>
-        <FormDescription>
-          Add your current and previous work experience
-        </FormDescription>
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Work Experience</h3>
+        <Button type="button" onClick={addCompany} variant="outline">
+          Add Company
+        </Button>
       </div>
 
       <div className="space-y-8">
@@ -250,28 +279,38 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
                   <FormItem>
                     <FormLabel>Start Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} className="text-lg p-6" />
+                      <Input 
+                        type="date"
+                        value={formatDate(field.value)}
+                        onChange={(e) => handleDateChange(index, 'startDate', e.target.value)}
+                        max={new Date().toISOString().split('T')[0]}
+                      />
                     </FormControl>
                     <FormMessage>{(errors.companies as any)?.[index]?.startDate?.message}</FormMessage>
                   </FormItem>
                 )}
               />
 
-              {!watch(`companies.${index}.isCurrent`) && (
-                <Controller
-                  name={`companies.${index}.endDate`}
-                  control={control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>End Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} className="text-lg p-6" />
-                      </FormControl>
-                      <FormMessage>{(errors.companies as any)?.[index]?.endDate?.message}</FormMessage>
-                    </FormItem>
-                  )}
-                />
-              )}
+              <Controller
+                name={`companies.${index}.endDate`}
+                control={control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date"
+                        value={company.isCurrent ? '' : formatDate(field.value)}
+                        onChange={(e) => handleDateChange(index, 'endDate', e.target.value || null)}
+                        max={new Date().toISOString().split('T')[0]}
+                        disabled={company.isCurrent}
+                        className="text-lg p-6"
+                      />
+                    </FormControl>
+                    <FormMessage>{(errors.companies as any)?.[index]?.endDate?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
             </div>
 
             <Controller
@@ -280,7 +319,12 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
               render={({ field }) => (
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                   <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(checked) => 
+                        handleCurrentPositionChange(index, checked as boolean)
+                      }
+                    />
                   </FormControl>
                   <div className="space-y-1 leading-none">
                     <FormLabel>I currently work here</FormLabel>
@@ -290,10 +334,6 @@ const Step3: React.FC<Step3Props> = ({ addCompany, removeCompany }) => {
             />
           </div>
         ))}
-
-        <Button type="button" variant="outline" onClick={addCompany}>
-          Add Company
-        </Button>
       </div>
 
       {/* New Company Dialog */}

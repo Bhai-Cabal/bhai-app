@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from './ui/input';
-import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from './ui/select';
+import { cn } from '@/lib/utils';
 
 interface LocationInputProps {
   selectedLocation: string;
   setSelectedLocation: (location: string) => void;
+  error?: string;
 }
 
 interface LocationResult {
@@ -13,17 +14,25 @@ interface LocationResult {
   type: string;
 }
 
-export const LocationInput: React.FC<LocationInputProps> = ({ selectedLocation, setSelectedLocation }) => {
+export const LocationInput: React.FC<LocationInputProps> = ({ 
+  selectedLocation, 
+  setSelectedLocation,
+  error 
+}) => {
   const [query, setQuery] = useState(selectedLocation || '');
   const [results, setResults] = useState<LocationResult[]>([]);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (query) {
+    setQuery(selectedLocation || '');
+  }, [selectedLocation]);
+
+  useEffect(() => {
+    if (query && query !== selectedLocation) {
       handleSearch();
     }
-  }, [query]);
+  }, [query, selectedLocation]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -39,12 +48,21 @@ export const LocationInput: React.FC<LocationInputProps> = ({ selectedLocation, 
   }, []);
 
   const handleSearch = async () => {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&addressdetails=1&limit=5`);
-    const data: LocationResult[] = await response.json();
-    const filteredResults = data.filter(result => 
-      result.type === 'administrative' || result.type === 'country'
-    );
-    setResults(filteredResults);
+    if (query.length < 2) return;
+    
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`
+      );
+      const data: LocationResult[] = await response.json();
+      const filteredResults = data.filter(result => 
+        result.type === 'administrative' || result.type === 'country'
+      );
+      setResults(filteredResults);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      setResults([]);
+    }
   };
 
   const handleSelect = (result: LocationResult) => {
@@ -61,9 +79,11 @@ export const LocationInput: React.FC<LocationInputProps> = ({ selectedLocation, 
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Enter a location"
-        className="w-full p-3 border rounded-lg dark:bg-black dark:border-gray-700 dark:text-white"
+        className={cn(
+          "w-full p-3 border rounded-lg dark:bg-black dark:border-gray-700 dark:text-white",
+          error && "border-red-500"
+        )}
         onFocus={() => setIsInputFocused(true)}
-        onBlur={() => setTimeout(() => setIsInputFocused(false), 200)}
       />
       {isInputFocused && results.length > 0 && (
         <div className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg dark:bg-black dark:border-gray-700">

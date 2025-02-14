@@ -75,6 +75,7 @@ const Step4: React.FC<Step4Props> = ({
   const [isSkillInputFocused, setIsSkillInputFocused] = useState(false);
   const [skillInputState, setSkillInputState] = useState(skillInput);
   const [skillValidationError, setSkillValidationError] = useState('');
+  const [identityValidationError, setIdentityValidationError] = useState('');
 
   useEffect(() => {
     setSkillInputState(skillInput);
@@ -180,6 +181,22 @@ const Step4: React.FC<Step4Props> = ({
     skill.name.toLowerCase().includes(skillInputState.toLowerCase())
   );
 
+  const checkDigitalIdentityExists = async (platform: string, identifier: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('digital_identities')
+        .select('*')
+        .eq('platform', platform.toLowerCase())
+        .eq('identifier', identifier.toLowerCase());
+
+      if (error) throw error;
+      return data && data.length > 0;
+    } catch (error) {
+      console.error('Error checking digital identity:', error);
+      return false;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Digital Identities Section */}
@@ -244,9 +261,26 @@ const Step4: React.FC<Step4Props> = ({
                       placeholder="Enter your profile link or identifier"
                       {...field}
                       className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
+                      onChange={async (e) => {
+                        field.onChange(e);
+                        const platform = watch(`digitalIdentities.${index}.platform`);
+                        if (platform && e.target.value) {
+                          const exists = await checkDigitalIdentityExists(platform, e.target.value);
+                          if (exists) {
+                            setIdentityValidationError(`This ${platform} identity is already registered`);
+                          } else {
+                            setIdentityValidationError('');
+                          }
+                        }
+                      }}
                     />
                   </FormControl>
-                  <FormMessage>{(errors.digitalIdentities as any)?.[index]?.identifier?.message}</FormMessage>
+                  <FormMessage>
+                    {(errors.digitalIdentities as any)?.[index]?.identifier?.message}
+                    {identityValidationError && (
+                      <span className="text-red-500 text-sm">{identityValidationError}</span>
+                    )}
+                  </FormMessage>
                 </FormItem>
               )}
             />
