@@ -7,6 +7,7 @@ import {
   UserCircle,
   Settings,
   Users,
+  Briefcase,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,6 +31,11 @@ const navItems = [
     title: "Profile",
     href: "/dashboard/profile",
     icon: UserCircle,
+  },
+  {
+    title: "Jobs",
+    href: "/dashboard/jobs",
+    icon: Briefcase,
   },
   {
     title: "Settings",

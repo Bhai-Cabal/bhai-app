@@ -19,16 +19,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      {/* <script
-  async
-  defer
-  src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyDHkFGtlCPx-3iUI7DxEBQA3eAzJfPvjI4&libraries=places`}
-></script> */}
       <body className={inter.className}>
         <Providers>
-          {/* <div className="fixed top-4 right-4 z-50">
-            <ThemeToggle />
-          </div> */}
           {children}
           <Toaster />
         </Providers>
