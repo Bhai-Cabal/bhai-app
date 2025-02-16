@@ -116,7 +116,7 @@ export default function ProfilePage() {
       // First get the user's database ID using the auth_id
       const { data: userData, error: userError } = await supabase
         .from("users")
-        .select("id")
+        .select("id, profile_picture_path")
         .eq("auth_id", user.id)
         .single();
 
@@ -230,6 +230,18 @@ export default function ProfilePage() {
 
       if (!selectedRolesError && selectedRolesData) {
         form.setValue("roles", selectedRolesData);
+      }
+
+      // Fetch profile picture URL
+      if (userData.profile_picture_path) {
+        const { data: imageUrl } = await supabase
+          .storage
+          .from("profile-pictures")
+          .getPublicUrl(userData.profile_picture_path);
+
+        if (imageUrl) {
+          setImagePreview(imageUrl.publicUrl);
+        }
       }
 
       setIsLoading(false);

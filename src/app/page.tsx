@@ -1,12 +1,21 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Globe, Users, Wallet } from "lucide-react";
+import { Globe, Users, Wallet, LogOut, User } from "lucide-react";
 import { motion } from "framer-motion";
+import { usePrivy } from "@privy-io/react-auth";
+import { supabase } from "@/lib/supabase";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // A new component to render animated 3D-inspired shapes in the background.
 const AnimatedBackground = () => {
@@ -41,6 +50,35 @@ const AnimatedBackground = () => {
 };
 
 export default function LandingPage() {
+  const { user,logout } = usePrivy();
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchProfilePicture = async () => {
+      if (!user?.id) return;
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("profile_picture_path")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (!error && data) {
+        const { data: imageUrl } = await supabase
+          .storage
+          .from("profile-pictures")
+          .getPublicUrl(data.profile_picture_path);
+
+        if (imageUrl) {
+          setProfilePicture(imageUrl.publicUrl);
+        }
+      }
+    };
+
+    fetchProfilePicture();
+  }, [user]);
+
   const featureCards = [
     {
       icon: Users,
@@ -77,10 +115,49 @@ export default function LandingPage() {
             Web3 Network
           </motion.div>
           <div className="flex items-center space-x-4">
-            <ThemeToggle />
-            <Link href="/login">
-              <Button variant="outline">Sign In</Button>
+            
+            <Link href={user ? "/dashboard/jobs" : "/jobs"}>
+              Jobs
             </Link>
+            {user ? (
+              <>
+                <Link href="/dashboard">
+                  Dashboard
+                </Link>
+                {profilePicture ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
+                      <img
+                        src={profilePicture}
+                        alt="Profile"
+                        className="w-8 h-8 rounded-full cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard/profile" className="flex items-center">
+                          <User className="mr-2 h-4 w-4" />
+                          Profile
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => logout()} className="flex items-center text-red-500">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Logout
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Link href="/profile">
+                    <Button variant="outline">Profile</Button>
+                  </Link>
+                )}
+              </>
+            ) : (
+              <Link href="/login">
+                <Button variant="outline">Sign In</Button>
+              </Link>
+            )}
+            <ThemeToggle />
           </div>
         </nav>
 
