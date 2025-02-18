@@ -33,6 +33,7 @@ import { useRouter } from "next/navigation";
 import { JobDetailsDialog } from "@/components/jobs/JobDetailsDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+// import { JobPostingForm } from '@/components/jobs/JobPostingForm';
 
 interface Job {
   id: string;
@@ -292,10 +293,18 @@ export default function JobsPage() {
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="top-0 z-10 pb-4 border-b">
+            <DialogHeader>
               <DialogTitle>Create a New Job Posting</DialogTitle>
             </DialogHeader>
-            <JobPostingForm fetchJobs={fetchJobs} />
+            <JobPostingForm 
+              fetchJobs={fetchJobs}
+              onClose={() => {
+                const dialogElement = document.querySelector('[role="dialog"]');
+                if (dialogElement) {
+                  (dialogElement as HTMLElement).click();
+                }
+              }}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -396,17 +405,48 @@ export default function JobsPage() {
                     <p className="text-muted-foreground">{job.company}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => router.push(`/dashboard/jobs/edit/${job.id}`)}
-                    >
-                      Edit Job
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          Edit Job
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>Edit Job Posting</DialogTitle>
+                        </DialogHeader>
+                        <JobPostingForm 
+                          fetchJobs={() => {
+                            fetchJobs();
+                            fetchCreatedJobs();
+                          }}
+                          existingJob={{
+                            id: job.id,
+                            title: job.title,
+                            company: job.companies?.name || '',
+                            companyId: job.company_id,
+                            location: job.location,
+                            salary_range: job.salary_range,
+                            job_type: job.job_type,
+                            blockchain: job.blockchain,
+                            description: job.description,
+                            experience_level: job.experience_level || '',
+                            job_skills: job.job_skills,
+                            skills: job.job_skills?.map((js: any) => js.skills.name) || []
+                          }}
+                          onClose={() => {
+                            const dialogElement = document.querySelector('[role="dialog"]');
+                            if (dialogElement) {
+                              (dialogElement as HTMLElement).click();
+                            }
+                          }}
+                        />
+                      </DialogContent>
+                    </Dialog>
                     <Badge>{job.status}</Badge>
                   </div>
                 </div>
-
+                
                 <div className="space-y-4">
                   <div>
                     <h4 className="font-medium mb-2">Applications ({job.job_applications?.length || 0})</h4>
@@ -707,20 +747,52 @@ function JobCard({ job }: { job: Job }) {
   );
 }
 
-function JobPostingForm({ fetchJobs }: { fetchJobs: () => void }) {
-  const { user, ready } = usePrivy();
+function JobPostingForm({ fetchJobs, existingJob, onClose }: { 
+  fetchJobs: () => void;
+  existingJob?: {
+    id: string;
+    title: string;
+    company: string;
+    companyId?: string;
+    location: string;
+    salary_range: string;
+    job_type: string;
+    blockchain: string;
+    description: string;
+    experience_level?: string;
+    job_skills?: any[];
+    skills?: string[];
+  };
+  onClose?: () => void;
+}) {
+  const { user } = usePrivy();
   
   const [formData, setFormData] = useState({
-    title: '',
-    company: '',
-    location: '',
-    salary: '',
-    jobType: '',
-    blockchain: '',
-    description: '',
-    experienceLevel: '',
+    title: existingJob?.title || '',
+    company: existingJob?.company || '',
+    location: existingJob?.location || '',
+    salary: existingJob?.salary_range || '',
+    jobType: existingJob?.job_type || '',
+    blockchain: existingJob?.blockchain || '',
+    description: existingJob?.description || '',
+    experienceLevel: existingJob?.experience_level || '',
     selectedSkills: [] as Skill[]
   });
+
+  // Initialize selected skills from existing job
+  useEffect(() => {
+    if (existingJob?.job_skills) {
+      const skills = existingJob.job_skills.map((js: any) => ({
+        id: js.skills.id,
+        name: js.skills.name
+      }));
+      setFormData(prev => ({
+        ...prev,
+        selectedSkills: skills
+      }));
+    }
+  }, [existingJob]);
+
   const [formErrors, setFormErrors] = useState({
     title: false,
     company: false,
@@ -859,39 +931,64 @@ function JobPostingForm({ fetchJobs }: { fetchJobs: () => void }) {
         .eq('name', formData.company)
         .single();
 
-      let companyId;
-      if (!companyData) {
-        const { data: newCompany, error: newCompanyError } = await supabase
-          .from('companies')
-          .insert({ name: formData.company, website: newCompanyDetails.website })
-          .select('id')
-          .single();
-        
-        if (newCompanyError) throw newCompanyError;
-        companyId = newCompany.id;
-      } else {
-        companyId = companyData.id;
+      let companyId = existingJob?.companyId;
+      if (!companyId) {
+        if (!companyData) {
+          const { data: newCompany, error: newCompanyError } = await supabase
+            .from('companies')
+            .insert({ name: formData.company, website: newCompanyDetails.website })
+            .select('id')
+            .single();
+          
+          if (newCompanyError) throw newCompanyError;
+          companyId = newCompany.id;
+        } else {
+          companyId = companyData.id;
+        }
       }
 
-      // Create job posting
-      const { data: jobData, error: jobError } = await supabase
-        .from('jobs')
-        .insert({
-          title: formData.title,
-          company_id: companyId,
-          location: formData.location,
-          salary_range: formData.salary,
-          job_type: formData.jobType,
-          blockchain: formData.blockchain,
-          description: formData.description,
-          experience_level: formData.experienceLevel,
-          user_id: userUuid,
-          status: 'active'
-        })
-        .select()
-        .single();
+      const jobData = {
+        title: formData.title,
+        company_id: companyId,
+        location: formData.location,
+        salary_range: formData.salary,
+        job_type: formData.jobType,
+        blockchain: formData.blockchain,
+        description: formData.description,
+        experience_level: formData.experienceLevel,
+        user_id: userUuid,
+        status: 'active'
+      };
 
-      if (jobError) throw jobError;
+      let result;
+      if (existingJob) {
+        // Update existing job
+        const { data, error } = await supabase
+          .from('jobs')
+          .update(jobData)
+          .eq('id', existingJob.id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        result = data;
+
+        // Delete existing job skills
+        await supabase
+          .from('job_skills')
+          .delete()
+          .eq('job_id', existingJob.id);
+      } else {
+        // Create new job
+        const { data, error } = await supabase
+          .from('jobs')
+          .insert(jobData)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        result = data;
+      }
 
       // Handle skills
       const skillPromises = formData.selectedSkills.map(async (skill: Skill) => {
@@ -902,30 +999,42 @@ function JobPostingForm({ fetchJobs }: { fetchJobs: () => void }) {
           .eq('name', skill.name)
           .single();
 
-        let skillId;
-        if (!existingSkill) {
+        let skillId = skill.id;
+        if (!skillId && !existingSkill) {
           const { data: newSkill } = await supabase
             .from('skills')
             .insert({ name: skill.name })
             .select('id')
             .single();
           skillId = newSkill?.id;
-        } else {
+        } else if (!skillId) {
           skillId = existingSkill.id;
         }
 
         // Create job-skill association
         return supabase
           .from('job_skills')
-          .insert({ job_id: jobData.id, skill_id: skillId });
+          .insert({ job_id: result.id, skill_id: skillId });
       });
 
       await Promise.all(skillPromises);
-      fetchJobs(); // Use the prop
-      setAlert({ type: 'success', message: 'Job posted successfully!' });
+      fetchJobs();
+      setAlert({ 
+        type: 'success', 
+        message: existingJob ? 'Job updated successfully!' : 'Job posted successfully!' 
+      });
+
+      if (onClose) {
+        setTimeout(() => {
+          onClose();
+        }, 1500);
+      }
     } catch (error) {
-      console.error('Error creating job:', error);
-      setAlert({ type: 'error', message: 'Failed to create job' });
+      console.error('Error creating/updating job:', error);
+      setAlert({ 
+        type: 'error', 
+        message: existingJob ? 'Failed to update job' : 'Failed to create job' 
+      });
     }
   };
 
@@ -1146,8 +1255,8 @@ function JobPostingForm({ fetchJobs }: { fetchJobs: () => void }) {
       </div>
 
       <div className="flex justify-end gap-4">
-        <Button variant="outline">Cancel</Button>
-        <Button type="submit">Post Job</Button>
+        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="submit">{existingJob ? 'Update Job' : 'Post Job'}</Button>
       </div>
 
       {/* New Company Dialog */}
@@ -1181,6 +1290,7 @@ function JobPostingForm({ fetchJobs }: { fetchJobs: () => void }) {
       </Dialog>
 
       {/* New Skill Dialog */}
+      
       <Dialog open={isNewSkillDialogOpen} onOpenChange={setIsNewSkillDialogOpen}>
         <DialogContent>
           <DialogHeader>
