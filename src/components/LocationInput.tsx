@@ -12,6 +12,8 @@ interface LocationResult {
   place_id: string;
   display_name: string;
   type: string;
+  lat: string;
+  lon: string;
 }
 
 export const LocationInput: React.FC<LocationInputProps> = ({ 
@@ -19,13 +21,18 @@ export const LocationInput: React.FC<LocationInputProps> = ({
   setSelectedLocation,
   error 
 }) => {
-  const [query, setQuery] = useState(selectedLocation || '');
+  const [query, setQuery] = useState('');
+  const [displayValue, setDisplayValue] = useState('');
   const [results, setResults] = useState<LocationResult[]>([]);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setQuery(selectedLocation || '');
+  }, [selectedLocation]);
+
+  useEffect(() => {
+    setDisplayValue(selectedLocation || '');
   }, [selectedLocation]);
 
   useEffect(() => {
@@ -66,8 +73,13 @@ export const LocationInput: React.FC<LocationInputProps> = ({
   };
 
   const handleSelect = (result: LocationResult) => {
-    setQuery(result.display_name);
-    setSelectedLocation(result.display_name);
+    const locationData = {
+      display_name: result.display_name,
+      lat: parseFloat(result.lat),
+      lng: parseFloat(result.lon)
+    };
+    setDisplayValue(result.display_name);
+    setSelectedLocation(JSON.stringify(locationData));
     setResults([]);
     setIsInputFocused(false);
   };
@@ -76,8 +88,11 @@ export const LocationInput: React.FC<LocationInputProps> = ({
     <div className="relative" ref={wrapperRef}>
       <Input
         type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        value={displayValue}
+        onChange={(e) => {
+          setDisplayValue(e.target.value);
+          setQuery(e.target.value);
+        }}
         placeholder="Enter a location"
         className={cn(
           "w-full p-3 border rounded-lg dark:bg-black dark:border-gray-700 dark:text-white",

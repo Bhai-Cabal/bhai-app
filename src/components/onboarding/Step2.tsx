@@ -19,6 +19,16 @@ const Step2: React.FC<Step2Props> = ({ selectedLocation, setSelectedLocation, ge
   const cryptoEntryMonth = watch('cryptoEntryMonth');
   const cryptoEntryYear = watch('cryptoEntryYear');
 
+  // Parse and display location name
+  const getLocationDisplayName = (locationString: string) => {
+    try {
+      const locationData = JSON.parse(locationString);
+      return locationData.display_name || locationString;
+    } catch (e) {
+      return locationString;
+    }
+  };
+
   // Update form when location is selected
   useEffect(() => {
     if (selectedLocation) {
@@ -87,7 +97,7 @@ const Step2: React.FC<Step2Props> = ({ selectedLocation, setSelectedLocation, ge
             </FormDescription>
             <FormControl>
               <LocationInput 
-                selectedLocation={selectedLocation} 
+                selectedLocation={field.value ? getLocationDisplayName(field.value) : ''}
                 setSelectedLocation={setSelectedLocation}
                 error={errors.location?.message?.toString()}
               />

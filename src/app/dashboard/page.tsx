@@ -33,7 +33,7 @@ import {
 } from 'recharts';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Web3NetworkViz from "@/components/Web3NetworkViz";
-import { parseLocation } from '@/lib/locationParser';
+import { parseLocation, parseLocationString } from '@/lib/locationParser';
 
 interface DashboardStats {
   totalUsers: number;
@@ -81,14 +81,12 @@ interface UserLocation {
 interface DeveloperProfile {
   id: string;
   avatarUrl: string;
-  profile_picture_path?: string;
+  profile_picture_path: string;
   full_name: string;
-  title?: string;
   location: {
     lat: number;
     lng: number;
-    city?: string;
-    country?: string;
+    display_name: string;
   };
   skills: string[];
 }
@@ -209,44 +207,32 @@ export default function DashboardPage() {
 
       // Process users for visualization
       if (users && users.length > 0) {
-        // Map users to developer profiles
-        const devProfiles = users.map(user => {
-          const parsedLocation = parseLocation(user.location);
-          
-          // Parse skills from skill_ids
-          let skills: string[] = ['Web3', 'Blockchain']; // Default skills
-          if (user.skill_ids) {
-            if (Array.isArray(user.skill_ids)) {
-              skills = user.skill_ids;
-            } else if (typeof user.skill_ids === 'string') {
-              try {
-                const parsed = JSON.parse(user.skill_ids);
-                if (Array.isArray(parsed)) {
-                  skills = parsed;
-                }
-              } catch (e) {
-                console.error("Error parsing skills:", e);
-              }
-            }
-          }
-          
-          return {
-            id: user.id,
-            avatarUrl: '', // Will be set in the next step
-            profile_picture_path: user.profile_picture_path,
-            full_name: user.full_name,
-            title: "user.title",
-            location: {
-              lat: parsedLocation.lat,
-              lng: parsedLocation.lng,
-              city: parsedLocation.city,
-              country: parsedLocation.country
-            },
-            skills
-          };
-        });
+        const devProfiles = users
+          .map(user => {
+            try {
+              const locationData = JSON.parse(user.location);
+              if (!locationData?.lat || !locationData?.lng) return null;
 
-        // Get profile picture URLs for all developers in a single batch
+              return {
+                id: user.id,
+                avatarUrl: '', // This will be set in the next step
+                profile_picture_path: user.profile_picture_path, // Add this line
+                full_name: user.full_name,
+                location: {
+                  lat: parseFloat(locationData.lat),
+                  lng: parseFloat(locationData.lng),
+                  display_name: locationData.display_name
+                },
+                skills: parseSkills(user.skill_ids)
+              };
+            } catch (e) {
+              console.error("Error parsing location for user:", user.id);
+              return null;
+            }
+          })
+          .filter((dev): dev is DeveloperProfile => dev !== null);
+
+        // Get profile picture URLs
         const developersWithAvatars = await Promise.all(
           devProfiles.map(async (dev) => {
             if (dev.profile_picture_path) {
@@ -254,17 +240,23 @@ export default function DashboardPage() {
                 .storage
                 .from("profile-pictures")
                 .getPublicUrl(dev.profile_picture_path);
-
-              return {
-                ...dev,
-                avatarUrl: imageUrl?.publicUrl || ''
-              };
+              return { ...dev, avatarUrl: imageUrl?.publicUrl || '' };
             }
             return dev;
           })
         );
 
-        setDevelopers(developersWithAvatars);
+        // Group developers by location
+        const groupedDevelopers = developersWithAvatars.reduce((acc, dev) => {
+          const key = `${dev.location.lat},${dev.location.lng}`;
+          if (!acc[key]) {
+            acc[key] = [];
+          }
+          acc[key].push(dev);
+          return acc;
+        }, {} as Record<string, DeveloperProfile[]>);
+
+        setDevelopers(Object.values(groupedDevelopers).flat());
       }
 
       // 3. Fetch activities data (optional - could be done later)
@@ -297,6 +289,22 @@ export default function DashboardPage() {
       console.error("Error fetching dashboard data:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Helper function to parse skills
+  const parseSkills = (skillIds: any): string[] => {
+    try {
+      if (Array.isArray(skillIds)) {
+        return skillIds;
+      }
+      if (typeof skillIds === 'string') {
+        const parsed = JSON.parse(skillIds);
+        return Array.isArray(parsed) ? parsed : [];
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   };
 
@@ -342,7 +350,9 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium">Location</p>
-                    <p className="text-muted-foreground">{profile?.location}</p>
+                    <p className="text-muted-foreground">
+                      {profile?.location ? parseLocationString(profile.location)?.display_name : 'No location set'}
+                    </p>
                   </div>
                 </div>
               </div>

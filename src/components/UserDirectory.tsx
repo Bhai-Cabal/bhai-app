@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { parseLocationString } from '@/lib/locationParser';
 
 interface User {
   id: string;
@@ -374,97 +375,104 @@ export function UserDirectory() {
     );
   };
 
-  const UserCard = ({ user }: { user: User }) => (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Card className="p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">
-          <div className="flex items-start space-x-4">
-            <Avatar>
-              {user.profile_picture_url ? (
-                <img
-                  src={user.profile_picture_url}
-                  alt={user.full_name}
-                  className="h-10 w-10 rounded-full"
-                />
-              ) : (
-                <AvatarFallback>{user.full_name.charAt(0)}</AvatarFallback>
-              )}
-            </Avatar>
-            <div className="space-y-1">
-              <h3 className="font-medium">{user.full_name}</h3>
-              <p className="text-sm text-muted-foreground">@{user.username}</p>
-              <p className="text-sm">{user.location}</p>
+  const UserCard = ({ user }: { user: User }) => {
+    // Parse location to get display name
+    const locationDisplay = user.location ? 
+      parseLocationString(user.location)?.display_name : 
+      'No location set';
+  
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Card className="p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">
+            <div className="flex items-start space-x-4">
+              <Avatar>
+                {user.profile_picture_url ? (
+                  <img
+                    src={user.profile_picture_url}
+                    alt={user.full_name}
+                    className="h-10 w-10 rounded-full"
+                  />
+                ) : (
+                  <AvatarFallback>{user.full_name.charAt(0)}</AvatarFallback>
+                )}
+              </Avatar>
+              <div className="space-y-1">
+                <h3 className="font-medium">{user.full_name}</h3>
+                <p className="text-sm text-muted-foreground">@{user.username}</p>
+                <p className="text-sm">{locationDisplay}</p>
+              </div>
+            </div>
+          </Card>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogTitle className="sr-only">User Details</DialogTitle>
+          <DialogClose className="p-2 absolute right-2 top-2" />
+          <div className="p-4 space-y-4">
+            <h3 className="font-bold text-lg">{user.full_name}</h3>
+            <p>
+              <span className="font-medium">Bio:</span> {user.bio}
+            </p>
+            <p>
+              <span className="font-medium">Location:</span> {locationDisplay}
+            </p>
+            <div>
+              <span className="font-medium">Skills:</span>
+              <ul className="list-disc list-inside">
+                {(user.skills ?? []).length > 0 ? (
+                  (user.skills ?? []).map((skill) => (
+                    <li key={skill.id}>{skill.name}</li>
+                  ))
+                ) : (
+                  <li>No skills added.</li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <span className="font-medium">Roles:</span>
+              <ul className="list-disc list-inside">
+                {user.roles && user.roles.length > 0 ? (
+                  user.roles?.map((role) => (
+                    <li key={role.id}>{role.name}</li>
+                  ))
+                ) : (
+                  <li>No roles added.</li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <span className="font-medium">Companies:</span>
+              <ul className="list-disc list-inside">
+                {(user.companies ?? []).length > 0 ? (
+                  user.companies?.map((company, index) => (
+                    <li key={index}>
+                      {company.role} at {company.name}
+                    </li>
+                  ))
+                ) : (
+                  <li>No companies added.</li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <span className="font-medium">Wallet Addresses:</span>
+              <ul className="list-disc list-inside">
+                {user.wallet_addresses?.length > 0 ? (
+                  user.wallet_addresses.map((wallet, index) => (
+                    <li key={index}>
+                      {wallet.blockchain}: {wallet.address}
+                    </li>
+                  ))
+                ) : (
+                  <li>No wallet addresses added.</li>
+                )}
+              </ul>
             </div>
           </div>
-        </Card>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogTitle className="sr-only">User Details</DialogTitle>
-        <DialogClose className="p-2 absolute right-2 top-2" />
-        <div className="p-4 space-y-4">
-          <h3 className="font-bold text-lg">{user.full_name}</h3>
-          <p>
-            <span className="font-medium">Bio:</span> {user.bio}
-          </p>
-          <p>
-            <span className="font-medium">Location:</span> {user.location}
-          </p>
-          <div>
-            <span className="font-medium">Skills:</span>
-            <ul className="list-disc list-inside">
-              {(user.skills ?? []).length > 0 ? (
-                (user.skills ?? []).map((skill) => (
-                  <li key={skill.id}>{skill.name}</li>
-                ))
-              ) : (
-                <li>No skills added.</li>
-              )}
-            </ul>
-          </div>
-          <div>
-            <span className="font-medium">Roles:</span>
-            <ul className="list-disc list-inside">
-              {user.roles && user.roles.length > 0 ? (
-                user.roles?.map((role) => (
-                  <li key={role.id}>{role.name}</li>
-                ))
-              ) : (
-                <li>No roles added.</li>
-              )}
-            </ul>
-          </div>
-          <div>
-            <span className="font-medium">Companies:</span>
-            <ul className="list-disc list-inside">
-              {(user.companies ?? []).length > 0 ? (
-                user.companies?.map((company, index) => (
-                  <li key={index}>
-                    {company.role} at {company.name}
-                  </li>
-                ))
-              ) : (
-                <li>No companies added.</li>
-              )}
-            </ul>
-          </div>
-          <div>
-            <span className="font-medium">Wallet Addresses:</span>
-            <ul className="list-disc list-inside">
-              {user.wallet_addresses?.length > 0 ? (
-                user.wallet_addresses.map((wallet, index) => (
-                  <li key={index}>
-                    {wallet.blockchain}: {wallet.address}
-                  </li>
-                ))
-              ) : (
-                <li>No wallet addresses added.</li>
-              )}
-            </ul>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+        </DialogContent>
+      </Dialog>
+    );
+  };
 
   return (
     <Card className="p-6">

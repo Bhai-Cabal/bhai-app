@@ -1,9 +1,10 @@
-type ParsedLocation = {
-  city?: string;
-  country?: string;
+interface ParsedLocation {
+  display_name: string;
   lat: number;
   lng: number;
-};
+  city?: string;
+  country?: string;
+}
 
 // Predefined coordinates for major tech hubs as fallbacks
 const techHubCoordinates: Record<string, [number, number]> = {
@@ -17,53 +18,83 @@ const techHubCoordinates: Record<string, [number, number]> = {
   // Add more tech hubs as needed
 };
 
-export function parseLocation(locationString: string): ParsedLocation {
-  if (!locationString) {
-    return generateRandomLocation();
-  }
-
-  // Clean the input string
-  const cleanLocation = locationString.trim().toLowerCase();
-  
-  // Check for common separators: comma, hyphen, or forward slash
-  const parts = cleanLocation.split(/[,\-\/]/).map(part => part.trim());
-  
-  // Try to identify city and country from the parts
-  let city: string | undefined;
-  let country: string | undefined;
-
-  if (parts.length >= 2) {
-    city = parts[0];
-    country = parts[parts.length - 1];
-  } else {
-    // If only one part, treat it as a city
-    city = parts[0];
-  }
-
-  // Look up coordinates for known tech hubs
-  if (city) {
-    const cityKey = Object.keys(techHubCoordinates).find(
-      key => key.toLowerCase() === city
+export async function getLocationCoordinates(locationString: string): Promise<ParsedLocation> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationString)}&limit=1`
     );
-    
-    if (cityKey) {
-      const [lat, lng] = techHubCoordinates[cityKey];
+    const data = await response.json();
+
+    if (data && data[0]) {
+      const result = data[0];
+      // Extract city and country from display name
+      const addressParts = result.display_name.split(', ');
+      const country = addressParts[addressParts.length - 1];
+      const city = addressParts[0];
+
       return {
-        city: toTitleCase(city),
-        country,
-        lat,
-        lng
+        display_name: result.display_name,
+        lat: parseFloat(result.lat),
+        lng: parseFloat(result.lon),
+        city,
+        country
       };
     }
-  }
 
-  // If no exact match found, generate a random position in a region
-  return {
-    city: city ? toTitleCase(city) : undefined,
-    country: country ? toTitleCase(country) : undefined,
-    ...generateRandomLocation()
-  };
+    // Fallback coordinates if location not found (0,0)
+    return {
+      display_name: '',
+      lat: 0,
+      lng: 0
+    };
+  } catch (error) {
+    console.error('Error geocoding location:', error);
+    // Return fallback coordinates
+    return {
+      display_name: '',
+      lat: 0,
+      lng: 0
+    };
+  }
 }
+
+// For immediate use when we already have coordinates
+export function parseLocation(locationString: string): ParsedLocation {
+  try {
+    // Try to parse stored JSON format first
+    const parsed = JSON.parse(locationString);
+    return {
+      display_name: parsed.display_name,
+      lat: parsed.lat || 0,
+      lng: parsed.lng || 0,
+      city: parsed.city,
+      country: parsed.country
+    };
+  } catch {
+    // If not JSON, return fallback coordinates
+    return {
+      display_name: '',
+      lat: 0,
+      lng: 0
+    };
+  }
+}
+
+export const parseLocationString = (locationString: string | null): ParsedLocation | null => {
+  if (!locationString) return null;
+  
+  try {
+    const parsed = JSON.parse(locationString);
+    return {
+      display_name: parsed.display_name,
+      lat: parsed.lat,
+      lng: parsed.lng
+    };
+  } catch (e) {
+    console.error('Error parsing location:', e);
+    return null;
+  }
+};
 
 function generateRandomLocation(): { lat: number; lng: number } {
   // Generate random coordinates within populated regions
@@ -92,4 +123,4 @@ function toTitleCase(str: string): string {
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
-} 
+}
