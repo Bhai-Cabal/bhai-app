@@ -28,14 +28,14 @@ const navItems = [
     icon: Users,
   },
   {
-    title: "Profile",
-    href: "/dashboard/profile",
-    icon: UserCircle,
-  },
-  {
     title: "Jobs",
     href: "/dashboard/jobs",
     icon: Briefcase,
+  },
+  {
+    title: "Profile",
+    href: "/dashboard/profile",
+    icon: UserCircle,
   },
   {
     title: "Settings",
@@ -78,6 +78,19 @@ export function DashboardNav() {
 
     fetchProfilePicture();
   }, [user?.id]);
+
+  useEffect(() => {
+    // Add event listener for profile picture updates
+    const handleProfilePictureUpdate = (event: CustomEvent<{ url: string }>) => {
+      setProfilePictureUrl(event.detail.url);
+    };
+
+    window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
+    };
+  }, []);
 
   return (
     <div className="w-64 border-r bg-card min-h-screen p-4 flex flex-col justify-between fixed h-screen gap-4">

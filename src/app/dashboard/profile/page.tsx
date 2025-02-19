@@ -304,6 +304,69 @@ export default function ProfilePage() {
       const values = form.getValues();
 
       switch (section) {
+        case 'username':
+          // Get the file from the form
+          const file = values.profilePicture;
+          let fileName = null;
+
+          // Handle profile picture if it exists
+          if (file) {
+            // Get the user's current profile picture path
+            const { data: userData } = await supabase
+              .from("users")
+              .select("profile_picture_path")
+              .eq("auth_id", user.id)
+              .single();
+
+            // Delete existing profile picture if it exists
+            if (userData?.profile_picture_path) {
+              await supabase
+                .storage
+                .from("profile-pictures")
+                .remove([userData.profile_picture_path]);
+            }
+
+            // Upload new profile picture
+            const fileExt = file.name.split('.').pop();
+            fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase
+              .storage
+              .from("profile-pictures")
+              .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+          }
+
+          // Update user profile including the new profile picture path if it exists
+          await supabase
+            .from("users")
+            .update({
+              username: values.username,
+              full_name: values.fullName,
+              bio: values.bio,
+              ...(fileName && { profile_picture_path: fileName })
+            })
+            .eq("auth_id", user.id);
+
+          // If profile picture was updated, get and set the new public URL
+          if (fileName) {
+            const { data: { publicUrl } } = supabase
+              .storage
+              .from("profile-pictures")
+              .getPublicUrl(fileName);
+
+            setImagePreview(publicUrl);
+
+            // Emit an event to notify other components about the profile picture update
+            const event = new CustomEvent('profilePictureUpdated', { 
+              detail: { url: publicUrl }
+            });
+            window.dispatchEvent(event);
+          }
+
+          break;
+
         case 'location':
           // Format crypto entry date
           const cryptoEntryDate = values.cryptoEntryMonth && values.cryptoEntryYear 
@@ -650,33 +713,38 @@ export default function ProfilePage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        form.setError('profilePicture', {
-          type: 'manual',
-          message: 'File size must be less than 5MB',
-        });
-        return;
-      }
+    if (!file) return;
 
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-      if (!validTypes.includes(file.type)) {
-        form.setError('profilePicture', {
-          type: 'manual',
-          message: 'File must be in JPG, PNG, or WebP format',
-        });
-        return;
-      }
-
-      form.setValue('profilePicture', file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
     }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Error",
+        description: "File must be in JPG, PNG, or WebP format",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Set the file in the form
+    form.setValue('profilePicture', file);
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handlePlatformChange = async (index: number, selectedValue: string) => {
@@ -983,10 +1051,16 @@ export default function ProfilePage() {
                       accept="image/jpeg,image/png,image/webp"
                       onChange={handleImageChange}
                       className="text-lg p-6"
+                      disabled={isLoading}
                     />
                     {imagePreview && (
                       <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-primary">
-                        <img src={imagePreview} alt="Profile preview" className="object-cover" />
+                        <img src={imagePreview} alt="Profile preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    {isLoading && (
+                      <div className="flex justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin" />
                       </div>
                     )}
                   </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,8 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Web3NetworkViz from "@/components/Web3NetworkViz";
+import { parseLocation } from '@/lib/locationParser';
 
 interface DashboardStats {
   totalUsers: number;
@@ -41,6 +43,7 @@ interface DashboardStats {
 }
 
 interface UserProfile {
+  id: string;
   username: string;
   full_name: string;
   bio: string;
@@ -50,6 +53,8 @@ interface UserProfile {
   bq_score: number;
   crypto_entry_date: string;
   avatarUrl: string;
+  profile_picture_path?: string;
+  skill_ids?: string | string[];
 }
 
 interface ActivityItem {
@@ -57,6 +62,42 @@ interface ActivityItem {
   type: string;
   description: string;
   timestamp: string;
+}
+
+interface UserLocation {
+  lat: number;
+  lng: number;
+  city: string;
+  country: string;
+  users: number;
+  profiles: {
+    id: string;
+    avatarUrl: string;
+    full_name: string;
+    title?: string;
+  }[];
+}
+
+interface DeveloperProfile {
+  id: string;
+  avatarUrl: string;
+  profile_picture_path?: string;
+  full_name: string;
+  title?: string;
+  location: {
+    lat: number;
+    lng: number;
+    city?: string;
+    country?: string;
+  };
+  skills: string[];
+}
+
+// Add interface for trend data
+interface TrendData {
+  date: string;
+  connections: number;
+  messages: number;
 }
 
 export default function DashboardPage() {
@@ -71,41 +112,93 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [trendData, setTrendData] = useState([]);
+  const [trendData, setTrendData] = useState<TrendData[]>([]);
+  const [developers, setDevelopers] = useState<DeveloperProfile[]>([]);
 
+  // Fetch all data in a single request when user logs in
   useEffect(() => {
     if (user?.id) {
-      fetchDashboardData();
+      fetchAllData();
     }
   }, [user?.id]);
 
-  const fetchDashboardData = async () => {
+  const fetchAllData = async () => {
     setIsLoading(true);
     try {
-      // Fetch profile data
+      // 1. First fetch user profile (we need the user ID to fetch other data)
       const { data: profileData, error: profileError } = await supabase
         .from("users")
-        .select("*")
+        .select(`
+          id,
+          username,
+          full_name,
+          bio,
+          location,
+          profile_completion_percentage,
+          current_tier,
+          bq_score,
+          crypto_entry_date,
+          profile_picture_path,
+          skill_ids
+        `)
         .eq("auth_id", user?.id)
         .single();
 
       if (profileError) throw profileError;
-      setProfile(profileData);
 
-      // Fetch dashboard stats
+      // Process profile picture if exists
+      let avatarUrl = '';
+      if (profileData.profile_picture_path) {
+        const { data: imageUrl } = await supabase
+          .storage
+          .from("profile-pictures")
+          .getPublicUrl(profileData.profile_picture_path);
+        avatarUrl = imageUrl?.publicUrl || '';
+      }
+
+      const processedProfile: UserProfile = {
+        ...profileData,
+        avatarUrl
+      };
+      
+      setProfile(processedProfile);
+
+      // 2. Now fetch dashboard stats and users in parallel
+      const [usersPromise, statsPromise] = await Promise.all([
+        // Fetch all users for the network visualization
+        supabase
+          .from("users")
+          .select(`
+            id,
+            full_name,
+            location,
+            profile_picture_path,
+            skill_ids
+          `)
+          .not('location', 'is', null),
+        
+        // Fetch dashboard stats
+        Promise.all([
+          supabase.from("users").select("*", { count: "exact" }),
+          supabase.from("companies").select("*", { count: "exact" }),
+          supabase.from("roles").select("*", { count: "exact" }),
+          supabase.from("user_companies")
+            .select("*", { count: "exact" })
+            .eq("user_id", processedProfile.id)
+        ])
+      ]);
+
+      // Process users data
+      const { data: users, error: usersError } = usersPromise;
+      if (usersError) throw usersError;
+
+      // Process stats data
       const [
         { count: usersCount },
         { count: companiesCount },
         { count: rolesCount },
         { count: connectionsCount }
-      ] = await Promise.all([
-        supabase.from("users").select("*", { count: "exact" }),
-        supabase.from("companies").select("*", { count: "exact" }),
-        supabase.from("roles").select("*", { count: "exact" }),
-        supabase.from("user_companies")
-          .select("*", { count: "exact" })
-          .eq("user_id", profileData.id)
-      ]);
+      ] = statsPromise;
 
       setStats({
         totalUsers: usersCount || 0,
@@ -113,6 +206,93 @@ export default function DashboardPage() {
         totalRoles: rolesCount || 0,
         yourConnections: connectionsCount || 0
       });
+
+      // Process users for visualization
+      if (users && users.length > 0) {
+        // Map users to developer profiles
+        const devProfiles = users.map(user => {
+          const parsedLocation = parseLocation(user.location);
+          
+          // Parse skills from skill_ids
+          let skills: string[] = ['Web3', 'Blockchain']; // Default skills
+          if (user.skill_ids) {
+            if (Array.isArray(user.skill_ids)) {
+              skills = user.skill_ids;
+            } else if (typeof user.skill_ids === 'string') {
+              try {
+                const parsed = JSON.parse(user.skill_ids);
+                if (Array.isArray(parsed)) {
+                  skills = parsed;
+                }
+              } catch (e) {
+                console.error("Error parsing skills:", e);
+              }
+            }
+          }
+          
+          return {
+            id: user.id,
+            avatarUrl: '', // Will be set in the next step
+            profile_picture_path: user.profile_picture_path,
+            full_name: user.full_name,
+            title: "user.title",
+            location: {
+              lat: parsedLocation.lat,
+              lng: parsedLocation.lng,
+              city: parsedLocation.city,
+              country: parsedLocation.country
+            },
+            skills
+          };
+        });
+
+        // Get profile picture URLs for all developers in a single batch
+        const developersWithAvatars = await Promise.all(
+          devProfiles.map(async (dev) => {
+            if (dev.profile_picture_path) {
+              const { data: imageUrl } = await supabase
+                .storage
+                .from("profile-pictures")
+                .getPublicUrl(dev.profile_picture_path);
+
+              return {
+                ...dev,
+                avatarUrl: imageUrl?.publicUrl || ''
+              };
+            }
+            return dev;
+          })
+        );
+
+        setDevelopers(developersWithAvatars);
+      }
+
+      // 3. Fetch activities data (optional - could be done later)
+      // This is mocked for now, but in a real app, you'd fetch this from the backend
+      setActivities([
+        {
+          id: '1',
+          type: 'connection',
+          description: 'New connection request from Jane Doe',
+          timestamp: new Date().toLocaleString()
+        },
+        {
+          id: '2',
+          type: 'message',
+          description: 'Message received from Acme Corp',
+          timestamp: new Date(Date.now() - 86400000).toLocaleString()
+        }
+      ]);
+
+      // 4. Fetch trend data (optional - could be done later)
+      // This is mocked for now, but in a real app, you'd fetch this from the backend
+      setTrendData([
+        { date: 'Jan', connections: 10, messages: 5 },
+        { date: 'Feb', connections: 15, messages: 10 },
+        { date: 'Mar', connections: 25, messages: 18 },
+        { date: 'Apr', connections: 30, messages: 22 }
+      ]);
+
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -120,18 +300,26 @@ export default function DashboardPage() {
     }
   };
 
+  // Memoize the avatar URL to prevent unnecessary re-renders
+  const profileAvatarUrl = useMemo(() => profile?.avatarUrl || '', [profile?.avatarUrl]);
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-screen">Loading dashboard...</div>;
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Button variant="outline" onClick={() => setAccountDialogOpen(true)}>
+        {/* <Button variant="outline" onClick={() => setAccountDialogOpen(true)}>
           <UserCircle className="mr-2 h-4 w-4" /> Update Profile
-        </Button>
+        </Button> */}
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="map">Global Network</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
@@ -141,8 +329,8 @@ export default function DashboardPage() {
           <Card className="p-6">
             <div className="flex items-start space-x-4">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={profile?.avatarUrl || ''} />
-                <AvatarFallback>{profile?.full_name?.charAt(0)}</AvatarFallback>
+                <AvatarImage src={profileAvatarUrl} />
+                <AvatarFallback>{profile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
               </Avatar>
               <div className="space-y-2 flex-1">
                 <h2 className="text-2xl font-bold">{profile?.full_name}</h2>
@@ -217,6 +405,16 @@ export default function DashboardPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="map" className="space-y-6">
+          <Card className="p-6">
+            <h3 className="text-xl font-semibold mb-4">Global Network</h3>
+            <p className="text-muted-foreground mb-6">
+              Explore BuidlQuest members across the globe. Click on points to see details.
+            </p>
+            <Web3NetworkViz developers={developers} />
+          </Card>
+        </TabsContent>
+
         <TabsContent value="analytics" className="space-y-6">
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Engagement Trends</h3>
@@ -261,6 +459,9 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
+              {activities.length === 0 && (
+                <p className="text-sm text-muted-foreground">No recent activity</p>
+              )}
             </div>
           </Card>
         </TabsContent>
