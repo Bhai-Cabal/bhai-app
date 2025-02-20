@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Map, Marker, ZoomControl } from 'pigeon-maps';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { UserCircle } from 'lucide-react';
+import { UserCircle, ArrowLeftRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
+import { Button } from './ui/button';
 
 interface DeveloperNode {
   id: string;
@@ -23,10 +24,17 @@ interface DeveloperNode {
 interface NetworkGraphProps {
   developers: DeveloperNode[];
   onNodeClick: (developer: DeveloperNode) => void;
+  showResetButton?: boolean;
 }
 
-interface MapProps {
-  darkMode?: boolean;
+interface LocationGroup {
+  location: {
+    lat: number;
+    lng: number;
+    city?: string;
+    country?: string;
+  };
+  developers: DeveloperNode[];
 }
 
 // Custom marker component
@@ -62,21 +70,104 @@ function CustomMarker({ developer, onClick, onHover, onLeave }: any) {
   );
 }
 
-// Add this function at the top level, outside the component
-const positronTiles = (x: number, y: number, z: number, dpr?: number) => {
-  return `https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/${z}/${x}/${y}${dpr && dpr === 2 ? '@2x' : ''}.png`;
+// Add new GroupedMarker component
+function GroupedMarker({ group, onClick, onHover, onLeave }: { 
+  group: LocationGroup; 
+  onClick: (dev: DeveloperNode) => void;
+  onHover: (dev: DeveloperNode[]) => void;
+  onLeave: () => void;
+}) {
+  const count = group.developers.length;
+  const mainDev = group.developers[0];
+
+  return (
+    <div
+      className="relative -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
+      onClick={() => onClick(mainDev)}
+      onMouseEnter={() => onHover(group.developers)}
+      onMouseLeave={onLeave}
+    >
+      <div className="relative">
+        {/* Main avatar */}
+        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-lg 
+                    transform transition-transform duration-200 group-hover:scale-110">
+          <Avatar className="w-full h-full">
+            <AvatarImage src={mainDev.avatarUrl} alt={mainDev.full_name} />
+            <AvatarFallback><UserCircle className="h-6 w-6" /></AvatarFallback>
+          </Avatar>
+        </div>
+
+        {/* Second avatar (if more than 1) */}
+        {count > 1 && (
+          <div className="absolute -right-2 -bottom-2 w-8 h-8 rounded-full overflow-hidden border-2 border-white shadow-lg bg-background">
+            <Avatar className="w-full h-full">
+              <AvatarImage src={group.developers[1].avatarUrl} alt={group.developers[1].full_name} />
+              <AvatarFallback><UserCircle className="h-4 w-4" /></AvatarFallback>
+            </Avatar>
+          </div>
+        )}
+
+        {/* Count badge (if more than 2) */}
+        {count > 2 && (
+          <div className="absolute -right-1 -top-1 bg-primary text-white text-xs px-2 py-1 rounded-full border-2 border-white shadow-lg dark:text-black">
+            +{count - 2}
+          </div>
+        )}
+
+        {/* Pulsing effect */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 animate-ping bg-indigo-400 rounded-full opacity-20" />
+        </div>
+
+        {/* Location pin */}
+        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-4 bg-indigo-500">
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-indigo-500 
+                      rounded-full border-2 border-white" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Replace the brightTiles function with streetTiles
+const streetTiles = (x: number, y: number, z: number, dpr?: number) => {
+  return `https://tiles.stadiamaps.com/tiles/osm_bright/${z}/${x}/${y}${dpr && dpr === 2 ? '@2x' : ''}.png`;
 };
 
-export default function NetworkGraph({ developers, onNodeClick }: NetworkGraphProps) {
-  const [hoveredDev, setHoveredDev] = useState<DeveloperNode | null>(null);
+export default function NetworkGraph({ developers, onNodeClick, showResetButton = false }: NetworkGraphProps) {
+  const [hoveredDevs, setHoveredDevs] = useState<DeveloperNode[] | null>(null);
   const [center, setCenter] = useState<[number, number]>([20, 0]);
   const [zoom, setZoom] = useState(2);
+
+  // Group developers by location
+  const groupedDevelopers = useMemo(() => {
+    const groups: { [key: string]: LocationGroup } = {};
+    
+    developers.forEach(dev => {
+      const key = `${dev.location.lat},${dev.location.lng}`;
+      if (!groups[key]) {
+        groups[key] = {
+          location: dev.location,
+          developers: []
+        };
+      }
+      groups[key].developers.push(dev);
+    });
+
+    return Object.values(groups);
+  }, [developers]);
+
+  // Reset map function
+  const resetMap = () => {
+    setCenter([20, 0]);
+    setZoom(2);
+  };
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
       <Map
-        defaultCenter={[20, 0]}
-        defaultZoom={3.5}
+defaultCenter={[20, 20]}
+        defaultZoom={3}
         center={center}
         zoom={zoom}
         onBoundsChanged={({ center, zoom }) => {
@@ -91,21 +182,21 @@ export default function NetworkGraph({ developers, onNodeClick }: NetworkGraphPr
         twoFingerDrag={false}
         mouseEvents={true}
         touchEvents={true}
-        provider={(x, y, z, dpr) => positronTiles(x, y, z, dpr)}
+        provider={(x, y, z, dpr) => streetTiles(x, y, z, dpr)}
       >
         <ZoomControl />
 
-        {developers.map((developer) => (
+        {groupedDevelopers.map((group) => (
           <Marker
-            key={developer.id}
+            key={`${group.location.lat},${group.location.lng}`}
             width={48}
-            anchor={[developer.location.lat, developer.location.lng]}
+            anchor={[group.location.lat, group.location.lng]}
           >
-            <CustomMarker
-              developer={developer}
+            <GroupedMarker
+              group={group}
               onClick={onNodeClick}
-              onHover={setHoveredDev}
-              onLeave={() => setHoveredDev(null)}
+              onHover={setHoveredDevs}
+              onLeave={() => setHoveredDevs(null)}
             />
           </Marker>
         ))}
@@ -113,7 +204,7 @@ export default function NetworkGraph({ developers, onNodeClick }: NetworkGraphPr
 
       {/* Hover tooltip */}
       <AnimatePresence>
-        {hoveredDev && (
+        {hoveredDevs && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -121,51 +212,39 @@ export default function NetworkGraph({ developers, onNodeClick }: NetworkGraphPr
             className="absolute top-4 left-4 z-50"
           >
             <Card className="p-3 bg-white/90 backdrop-blur-sm shadow-lg">
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8 ring-2 ring-indigo-500/20">
-                  <AvatarImage src={hoveredDev.avatarUrl} alt={hoveredDev.full_name} />
-                  <AvatarFallback>
-                    <UserCircle className="h-4 w-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-medium text-sm">{hoveredDev.full_name}</div>
-                  <div className="text-xs text-gray-500">
-                    {hoveredDev.location.city || hoveredDev.location.country || 'Unknown location'}
+              <div className="space-y-3">
+                {hoveredDevs.map(dev => (
+                  <div key={dev.id} className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8 ring-2 ring-indigo-500/20">
+                      <AvatarImage src={dev.avatarUrl} alt={dev.full_name} />
+                      <AvatarFallback><UserCircle className="h-4 w-4" /></AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium text-sm">{dev.full_name}</div>
+                      <div className="text-xs text-gray-500">
+                        {dev.location.city || dev.location.country || 'Unknown location'}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {hoveredDev.skills.slice(0, 3).map((skill) => (
-                  <span
-                    key={skill}
-                    className="px-2 py-1 text-xs rounded-full bg-indigo-500/10 text-indigo-600"
-                  >
-                    {skill}
-                  </span>
                 ))}
-                {hoveredDev.skills.length > 3 && (
-                  <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
-                    +{hoveredDev.skills.length - 3}
-                  </span>
-                )}
               </div>
             </Card>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Reset view button */}
-      <button
-        onClick={() => {
-          setCenter([20, 0]);
-          setZoom(2);
-        }}
-        className="absolute bottom-4 right-4 p-2 bg-white rounded-lg shadow-lg hover:bg-gray-50"
-        title="Reset view"
-      >
-        <UserCircle className="h-4 w-4" />
-      </button>
+      {/* Reset button */}
+      {showResetButton && (
+        <Button
+          onClick={resetMap}
+          variant="outline"
+          size="icon"
+          className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm shadow-lg"
+          title="Reset map view"
+        >
+          <ArrowLeftRight className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }

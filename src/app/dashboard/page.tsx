@@ -331,40 +331,70 @@ export default function DashboardPage() {
         className="h-full"
       >
         <Tabs defaultValue="map" className="h-full flex flex-col">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-4"
             >
-              <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-                <AvatarImage src={profileAvatarUrl} />
-                <AvatarFallback>{profile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
-              </Avatar>
+              <div className="relative group">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-full blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
+                <Avatar className="h-14 w-14 ring-2 ring-background relative">
+                  <AvatarImage src={profileAvatarUrl} />
+                  <AvatarFallback>{profile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                </Avatar>
+              </div>
               <div>
                 <h1 className="text-2xl font-bold">Welcome back, {profile?.full_name?.split(' ')[0]}</h1>
                 <p className="text-sm text-muted-foreground">Here's what's happening in your network</p>
               </div>
             </motion.div>
             
-            <TabsList className="h-10 p-1 bg-background/50 backdrop-blur-sm border">
-              <TabsTrigger value="map" className="px-6 text-xs font-medium">
-                <Globe2 className="mr-2 h-4 w-4" />
-                Network Map
-              </TabsTrigger>
-              <TabsTrigger value="overview" className="px-6 text-xs font-medium">
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="px-6 text-xs font-medium">
-                <LineChart className="mr-2 h-4 w-4" />
-                Analytics
-              </TabsTrigger>
-              <TabsTrigger value="activity" className="px-6 text-xs font-medium">
-                <Activity className="mr-2 h-4 w-4" />
-                Activity
-              </TabsTrigger>
-            </TabsList>
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full md:w-auto"
+            >
+              <TabsList className="w-full md:w-auto h-14 p-1.5 bg-background/80 backdrop-blur-xl border rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden flex gap-1">
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-primary/10 via-secondary/10 to-primary/10 opacity-50"
+                  animate={{
+                    backgroundPosition: ["0% 0%", "100% 0%", "0% 0%"],
+                  }}
+                  transition={{
+                    duration: 10,
+                    repeat: Infinity,
+                    ease: "linear"
+                  }}
+                />
+                
+                {[
+                  { value: "map", icon: Globe2, label: "Network" },
+                  { value: "overview", icon: LayoutDashboard, label: "Overview" },
+                  { value: "analytics", icon: TrendingUp, label: "Analytics" },
+                  { value: "activity", icon: Activity, label: "Activity" }
+                ].map((item) => (
+                  <TabsTrigger
+                    key={item.value}
+                    value={item.value}
+                    className="relative px-6 py-2.5 text-sm font-medium data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-xl transition-all duration-300 hover:bg-primary/5 flex-1 md:flex-initial min-w-[120px]"
+                  >
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center justify-center gap-2"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                      <motion.div
+                        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-primary/50 opacity-0 data-[state=active]:opacity-100 transition-opacity"
+                        layoutId="activeTab"
+                      />
+                    </motion.div>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </motion.div>
           </div>
 
           <TabsContent value="map" className="flex-1 h-[calc(100vh-10rem)] overflow-hidden rounded-xl border bg-card">
@@ -375,7 +405,10 @@ export default function DashboardPage() {
                   {developers.length} members across {new Set(developers.map(d => d.location.country)).size} countries
                 </p>
               </div>
-              <Web3NetworkViz developers={developers} />
+              <Web3NetworkViz 
+                developers={developers}
+                showResetButton={true} // Add this prop
+              />
             </div>
           </TabsContent>
 

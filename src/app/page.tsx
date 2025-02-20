@@ -275,6 +275,7 @@ export default function LandingPage() {
           <div className="absolute inset-0">
             <Web3NetworkViz 
               developers={developers}
+              showResetButton={false}
             />
           </div>
 
@@ -305,7 +306,7 @@ export default function LandingPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="text-xl md:text-2xl text-muted-foreground mb-10 leading-relaxed max-w-3xl mx-auto"
+                  className="text-xl md:text-2xl text-muted-foreground mb-10 leading-relaxed max-w-3xl mx-auto dark:text-foreground"
                 >
                   Join a thriving community of Web3 professionals, innovators, and builders. 
                   Connect with like-minded individuals and unlock opportunities in the 

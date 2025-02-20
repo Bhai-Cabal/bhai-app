@@ -23,9 +23,10 @@ interface DeveloperProfile {
 
 interface Web3NetworkVizProps {
   developers: DeveloperProfile[];
+  showResetButton?: boolean; // Add this prop
 }
 
-export default function Web3NetworkViz({ developers }: Web3NetworkVizProps) {
+export default function Web3NetworkViz({ developers, showResetButton = false }: Web3NetworkVizProps) {
   const [selectedDeveloper, setSelectedDeveloper] = useState<DeveloperProfile | null>(null);
 
   if (!developers || developers.length === 0) {
@@ -44,6 +45,7 @@ export default function Web3NetworkViz({ developers }: Web3NetworkVizProps) {
       <NetworkGraph 
         developers={developers}
         onNodeClick={setSelectedDeveloper}
+        showResetButton={showResetButton} // Pass the prop
       />
 
       <AnimatePresence>
