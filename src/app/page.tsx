@@ -73,6 +73,7 @@ export default function LandingPage() {
           return {
             id: user.id,
             avatarUrl: '', // Will be set below
+            profile_picture_path: user.profile_picture_path,
             full_name: user.full_name,
             location: {
               lat: parsedLocation.lat,
@@ -84,9 +85,20 @@ export default function LandingPage() {
           };
         });
 
+        // Add profile pictures
         const developersWithAvatars = await Promise.all(
           devProfiles.map(async (dev) => {
-            // Add avatar URL logic here if needed
+            if (dev.profile_picture_path) {
+              const { data: imageUrl } = await supabase
+                .storage
+                .from("profile-pictures")
+                .getPublicUrl(dev.profile_picture_path);
+
+              return {
+                ...dev,
+                avatarUrl: imageUrl?.publicUrl || ''
+              };
+            }
             return dev;
           })
         );
@@ -267,8 +279,8 @@ export default function LandingPage() {
       <main className="flex-1 flex flex-col">
         <div className="h-screen relative">
           {/* Enhanced gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-background/40 to-transparent z-10"/>
-          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/20 to-transparent z-10"/>
+          <div className="absolute inset-0 bg-gradient-to-b from-background via-background/30 to-transparent z-10"/>
+          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/15 to-transparent z-10"/>
           <div className="absolute inset-0 bg-gradient-radial from-transparent via-background/5 to-background/20 z-10"/>
 
           {/* Map Background - Full height and width */}
@@ -306,7 +318,8 @@ export default function LandingPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="text-xl md:text-2xl text-muted-foreground mb-10 leading-relaxed max-w-3xl mx-auto dark:text-foreground"
+                  className="text-xl md:text-2xl text-muted-foreground mb-10 leading-relaxed max-w-3xl mx-auto
+                  "
                 >
                   Join a thriving community of Web3 professionals, innovators, and builders. 
                   Connect with like-minded individuals and unlock opportunities in the 

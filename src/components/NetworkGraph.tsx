@@ -47,12 +47,12 @@ function CustomMarker({ developer, onClick, onHover, onLeave }: any) {
       onMouseLeave={onLeave}
     >
       <div className="relative">
-        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-lg 
+        <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white shadow-lg 
                       transform transition-transform duration-200 group-hover:scale-110">
           <Avatar className="w-full h-full">
             <AvatarImage src={developer.avatarUrl} alt={developer.full_name} />
             <AvatarFallback>
-              <UserCircle className="h-6 w-6" />
+              <UserCircle className="h-4 w-4" />
             </AvatarFallback>
           </Avatar>
         </div>
@@ -61,8 +61,8 @@ function CustomMarker({ developer, onClick, onHover, onLeave }: any) {
           <div className="absolute inset-0 animate-ping bg-indigo-400 rounded-full opacity-20" />
         </div>
         {/* Pin */}
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-4 bg-indigo-500">
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-indigo-500 
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0.5 h-2 bg-indigo-500">
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-indigo-500 
                         rounded-full border-2 border-white" />
         </div>
       </div>
@@ -70,67 +70,96 @@ function CustomMarker({ developer, onClick, onHover, onLeave }: any) {
   );
 }
 
-// Add new GroupedMarker component
-function GroupedMarker({ group, onClick, onHover, onLeave }: { 
+// Update the GroupedMarker's pin positioning
+function GroupedMarker({ group, onClick, onHover, onLeave, zoom }: { 
   group: LocationGroup; 
   onClick: (dev: DeveloperNode) => void;
   onHover: (dev: DeveloperNode[]) => void;
   onLeave: () => void;
+  zoom: number;
 }) {
   const count = group.developers.length;
   const mainDev = group.developers[0];
 
+  // Calculate size based on zoom level
+  const baseSize = 36; // Base size in pixels
+  const sizeMultiplier = Math.min(1.2, Math.max(1, zoom / 6)); // Slowly increase size with zoom
+  const avatarSize = baseSize * sizeMultiplier;
+  const secondaryAvatarSize = (avatarSize * 0.625); // 20px at base size
+
   return (
     <div
-      className="relative -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
+      className="absolute cursor-pointer group"
       onClick={() => onClick(mainDev)}
       onMouseEnter={() => onHover(group.developers)}
       onMouseLeave={onLeave}
+      style={{
+        transform: 'translate(-50%, -50%)',
+        width: avatarSize,
+        height: avatarSize
+      }}
     >
-      <div className="relative">
-        {/* Main avatar */}
-        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-lg 
-                    transform transition-transform duration-200 group-hover:scale-110">
+      {/* Main avatar */}
+      <div 
+        className="absolute rounded-full overflow-hidden border-2 border-white shadow-lg 
+                   transform transition-transform duration-200 group-hover:scale-110"
+        style={{
+          width: avatarSize,
+          height: avatarSize,
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)'
+        }}
+      >
+        <Avatar className="w-full h-full">
+          <AvatarImage src={mainDev.avatarUrl} alt={mainDev.full_name} />
+          <AvatarFallback>
+            <UserCircle className="w-1/2 h-1/2" />
+          </AvatarFallback>
+        </Avatar>
+      </div>
+
+      {/* Second avatar */}
+      {count > 1 && (
+        <div 
+          className="absolute rounded-full overflow-hidden border-2 border-white shadow-lg bg-background"
+          style={{
+            width: secondaryAvatarSize,
+            height: secondaryAvatarSize,
+            right: -4,
+            bottom: -4
+          }}
+        >
           <Avatar className="w-full h-full">
-            <AvatarImage src={mainDev.avatarUrl} alt={mainDev.full_name} />
-            <AvatarFallback><UserCircle className="h-6 w-6" /></AvatarFallback>
+            <AvatarImage src={group.developers[1].avatarUrl} alt={group.developers[1].full_name} />
+            <AvatarFallback>
+              <UserCircle className="w-1/2 h-1/2" />
+            </AvatarFallback>
           </Avatar>
         </div>
+      )}
 
-        {/* Second avatar (if more than 1) */}
-        {count > 1 && (
-          <div className="absolute -right-2 -bottom-2 w-8 h-8 rounded-full overflow-hidden border-2 border-white shadow-lg bg-background">
-            <Avatar className="w-full h-full">
-              <AvatarImage src={group.developers[1].avatarUrl} alt={group.developers[1].full_name} />
-              <AvatarFallback><UserCircle className="h-4 w-4" /></AvatarFallback>
-            </Avatar>
-          </div>
-        )}
-
-        {/* Count badge (if more than 2) */}
-        {count > 2 && (
-          <div className="absolute -right-1 -top-1 bg-primary text-white text-xs px-2 py-1 rounded-full border-2 border-white shadow-lg dark:text-black">
-            +{count - 2}
-          </div>
-        )}
-
-        {/* Pulsing effect */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute inset-0 animate-ping bg-indigo-400 rounded-full opacity-20" />
+      {/* Count badge */}
+      {count > 2 && (
+        <div className="absolute -right-1 -top-1 bg-primary text-white text-xs px-1.5 py-0.5 rounded-full border border-white shadow-lg dark:text-black">
+          +{count - 2}
         </div>
+      )}
 
-        {/* Location pin */}
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-4 bg-indigo-500">
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-indigo-500 
-                      rounded-full border-2 border-white" />
+      {/* Pin - Made more precise */}
+      <div className="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-full">
+        <div className="w-[2px] h-[6px] bg-indigo-500">
+          <div className="absolute -top-[2px] left-1/2 w-[6px] h-[6px] bg-indigo-500 
+                         rounded-full border border-white transform -translate-x-1/2" />
         </div>
       </div>
     </div>
   );
 }
 
-// Replace the brightTiles function with streetTiles
+// Update the tiles function to use Stadia Maps street tiles
 const streetTiles = (x: number, y: number, z: number, dpr?: number) => {
+  // Using Stadia Maps street style
   return `https://tiles.stadiamaps.com/tiles/osm_bright/${z}/${x}/${y}${dpr && dpr === 2 ? '@2x' : ''}.png`;
 };
 
@@ -166,7 +195,7 @@ export default function NetworkGraph({ developers, onNodeClick, showResetButton 
   return (
     <div className="relative h-screen w-full overflow-hidden">
       <Map
-defaultCenter={[20, 20]}
+        defaultCenter={[20, 20]}
         defaultZoom={3}
         center={center}
         zoom={zoom}
@@ -183,20 +212,24 @@ defaultCenter={[20, 20]}
         mouseEvents={true}
         touchEvents={true}
         provider={(x, y, z, dpr) => streetTiles(x, y, z, dpr)}
+        dprs={[1, 2]} // Support retina displays
+        boxClassname="brightness-[0.97] contrast-[0.95]" // Remove grayscale, keep subtle styling
       >
         <ZoomControl />
 
         {groupedDevelopers.map((group) => (
           <Marker
             key={`${group.location.lat},${group.location.lng}`}
-            width={48}
+            width={16} // Smaller base width for more precise positioning
             anchor={[group.location.lat, group.location.lng]}
+            offset={[0, 8]} // Offset to align pin point with location
           >
             <GroupedMarker
               group={group}
               onClick={onNodeClick}
               onHover={setHoveredDevs}
               onLeave={() => setHoveredDevs(null)}
+              zoom={zoom}
             />
           </Marker>
         ))}

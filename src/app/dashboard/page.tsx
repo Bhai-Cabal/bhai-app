@@ -104,6 +104,15 @@ interface TrendData {
   messages: number;
 }
 
+const formatLocation = (locationString: string) => {
+  try {
+    const locationObj = JSON.parse(locationString);
+    return locationObj.display_name || 'Unknown location';
+  } catch (e) {
+    return locationString;
+  }
+};
+
 export default function DashboardPage() {
   const { user } = usePrivy();
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
@@ -430,7 +439,9 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium">Location</p>
-                      <p className="text-muted-foreground">{profile?.location}</p>
+                      <p className="text-muted-foreground">
+                        {profile?.location ? formatLocation(profile.location) : 'No location set'}
+                      </p>
                     </div>
                   </div>
                 </div>
