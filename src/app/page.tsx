@@ -72,7 +72,7 @@ export default function LandingPage() {
           const parsedLocation = parseLocation(user.location);
           return {
             id: user.id,
-            avatarUrl: '', // Will be set below
+            avatarUrl: '',
             profile_picture_path: user.profile_picture_path,
             full_name: user.full_name,
             location: {
@@ -81,11 +81,10 @@ export default function LandingPage() {
               city: parsedLocation.city,
               country: parsedLocation.country
             },
-            skills: ['Web3', 'Blockchain'] // Default skills
+            skills: ['Web3', 'Blockchain']
           };
         });
 
-        // Add profile pictures
         const developersWithAvatars = await Promise.all(
           devProfiles.map(async (dev) => {
             if (dev.profile_picture_path) {
@@ -138,8 +137,8 @@ export default function LandingPage() {
   const { logout } = usePrivy();
 
   return (
-    <div className="min-h-screen flex flex-col bg-background overflow-hidden">
-      {/* Navigation - Updated styles */}
+    <div className="h-screen w-full overflow-hidden bg-background">
+      {/* Navigation */}
       <nav className="fixed w-full z-50 bg-background/80 backdrop-blur-xl border-b border-border/20">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-20">
@@ -147,7 +146,7 @@ export default function LandingPage() {
               Bhai Cabal
             </Link>
 
-            {/* Desktop Navigation - Enhanced styles */}
+            {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
               <Link href="/jobs" className="text-sm font-medium hover:text-primary transition-colors">
                 Jobs
@@ -222,7 +221,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Mobile Navigation - Updated with profile */}
+        {/* Mobile Navigation */}
         <AnimatePresence>
           {isMenuOpen && (
             <motion.div
@@ -275,88 +274,89 @@ export default function LandingPage() {
         </AnimatePresence>
       </nav>
 
-      {/* Updated Main Content */}
-      <main className="flex-1 flex flex-col">
-        <div className="h-screen relative">
-          {/* Enhanced gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-background/30 to-transparent z-10"/>
-          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/15 to-transparent z-10"/>
-          <div className="absolute inset-0 bg-gradient-radial from-transparent via-background/5 to-background/20 z-10"/>
-
-          {/* Map Background - Full height and width */}
-          <div className="absolute inset-0">
+      {/* Main Content */}
+      <main className="h-screen pt-20">
+        <div className="relative h-[calc(100vh-5rem)]">
+          {/* Softer gradient overlays */}
+          <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/20 to-transparent z-10"/>
+          <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/10 to-transparent z-10"/>
+          
+          {/* Map Background */}
+          <div className="absolute inset-0 h-full w-full">
             <Web3NetworkViz 
               developers={developers}
               showResetButton={false}
             />
           </div>
 
-          {/* Hero Content - Better vertical positioning */}
-          <div className="relative z-20">
-            <div className="container mx-auto min-h-screen flex items-center justify-center px-4 pt-20">
-              <div className="max-w-5xl w-full text-center">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="inline-block mb-6 px-6 py-2 rounded-full bg-primary/10 backdrop-blur-sm border border-primary/20"
-                >
-                  <span className="text-sm font-medium text-primary">
-                    Web3's Premier Professional Network
-                  </span>
-                </motion.div>
-                
-                <motion.h1 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-6xl md:text-8xl font-bold mb-8 bg-gradient-to-r from-primary via-primary/80 to-primary/50 bg-clip-text text-transparent leading-tight"
-                >
-                  Connect, Build, Grow
-                </motion.h1>
-                
-                <motion.p 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="text-xl md:text-2xl text-muted-foreground mb-10 leading-relaxed max-w-3xl mx-auto
-                  "
-                >
-                  Join a thriving community of Web3 professionals, innovators, and builders. 
-                  Connect with like-minded individuals and unlock opportunities in the 
-                  decentralized ecosystem.
-                </motion.p>
-                
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  className="flex items-center justify-center gap-6"
-                >
-                  {!user && (
-                    <>
-                      <Link href="/login">
-                        <Button 
-                          size="lg" 
-                          className="text-lg h-14 px-10 rounded-full hover:scale-105 transition-transform"
+          {/* Hero Content */}
+          <div className="relative z-20 h-full">
+            <div className="container mx-auto h-full flex items-center justify-center px-4">
+              <div className="max-w-4xl w-full">
+                <div className="backdrop-blur-[5px] bg-background/30 p-8 md:p-12 rounded-3xl border border-border/20 shadow-2xl">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="inline-block mb-4 md:mb-6 px-4 py-2 rounded-full bg-primary/20 border border-primary/30"
+                  >
+                    <span className="text-xs md:text-sm font-medium text-primary">
+                      Web3's Premier Professional Network
+                    </span>
+                  </motion.div>
+                  
+                  <motion.h1 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 md:mb-6 bg-gradient-to-r from-primary via-primary to-primary/80 bg-clip-text text-transparent leading-tight"
+                  >
+                    Connect, Build, Grow
+                  </motion.h1>
+                  
+                  <motion.p 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-lg md:text-xl text-foreground/90 mb-6 md:mb-8 leading-relaxed max-w-3xl"
+                  >
+                    Join a thriving community of Web3 professionals, innovators, and builders. 
+                    Connect with like-minded individuals and unlock opportunities in the 
+                    decentralized ecosystem.
+                  </motion.p>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                    className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6"
+                  >
+                    {!user && (
+                      <>
+                        <Link href="/login">
+                          <Button 
+                            size="lg" 
+                            className="text-base md:text-lg h-12 md:h-14 px-8 md:px-10 rounded-full bg-primary hover:bg-primary/90 hover:scale-105 transition-all shadow-lg shadow-primary/20 w-full sm:w-auto"
+                          >
+                            Join Bhai Cabal
+                          </Button>
+                        </Link>
+                        <Link 
+                          href="/jobs" 
+                          className="text-base md:text-lg font-medium text-foreground hover:text-primary transition-colors flex items-center gap-2 group"
                         >
-                          Join Bhai Cabal
-                        </Button>
-                      </Link>
-                      <Link 
-                        href="/jobs" 
-                        className="text-lg font-medium hover:text-primary transition-colors flex items-center gap-2"
-                      >
-                        Browse Opportunities
-                        <motion.span
-                          animate={{ x: [0, 5, 0] }}
-                          transition={{ repeat: Infinity, duration: 1.5 }}
-                        >
-                          →
-                        </motion.span>
-                      </Link>
-                    </>
-                  )}
-                </motion.div>
+                          Browse Opportunities
+                          <motion.span
+                            animate={{ x: [0, 5, 0] }}
+                            transition={{ repeat: Infinity, duration: 1.5 }}
+                            className="group-hover:translate-x-2"
+                          >
+                            →
+                          </motion.span>
+                        </Link>
+                      </>
+                    )}
+                  </motion.div>
+                </div>
               </div>
             </div>
           </div>
