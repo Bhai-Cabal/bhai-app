@@ -157,10 +157,9 @@ function GroupedMarker({ group, onClick, onHover, onLeave, zoom }: {
   );
 }
 
-// Update the tiles function to use Stadia Maps street tiles
-const streetTiles = (x: number, y: number, z: number, dpr?: number) => {
-  // Using Stadia Maps street style
-  return `https://tiles.stadiamaps.com/tiles/osm_bright/${z}/${x}/${y}${dpr && dpr === 2 ? '@2x' : ''}.png`;
+// Update the tiles function to use Cartodb Voyager tiles
+const cartoTiles = (x: number, y: number, z: number, dpr?: number) => {
+  return `https://basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}${dpr === 2 ? '@2x' : ''}.png`;
 };
 
 export default function NetworkGraph({ developers, onNodeClick, showResetButton = false }: NetworkGraphProps) {
@@ -203,7 +202,7 @@ export default function NetworkGraph({ developers, onNodeClick, showResetButton 
           setCenter(center);
           setZoom(zoom);
         }}
-        attribution={false}
+        attribution={<>&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a></>}
         minZoom={2}
         maxZoom={8}
         metaWheelZoom={true}
@@ -211,7 +210,7 @@ export default function NetworkGraph({ developers, onNodeClick, showResetButton 
         twoFingerDrag={false}
         mouseEvents={true}
         touchEvents={true}
-        provider={(x, y, z, dpr) => streetTiles(x, y, z, dpr)}
+        provider={(x, y, z, dpr) => cartoTiles(x, y, z, dpr)}
         dprs={[1, 2]} // Support retina displays
         boxClassname="brightness-[0.97] contrast-[0.95]" // Remove grayscale, keep subtle styling
       >
