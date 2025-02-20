@@ -8,6 +8,8 @@ import {
   Settings,
   Users,
   Briefcase,
+  ChevronLeft,
+  Gift,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,6 +17,14 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { AccountDialog } from "./AccountDialog";
 import { supabase } from "@/lib/supabase";
+import { AnimatePresence, motion } from "framer-motion";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/theme-toggle";
+
+interface DashboardNavProps {
+  onCollapse?: (collapsed: boolean) => void;
+  defaultCollapsed?: boolean;
+}
 
 const navItems = [
   {
@@ -44,7 +54,8 @@ const navItems = [
   },
 ];
 
-export function DashboardNav() {
+export function DashboardNav({ onCollapse, defaultCollapsed = false }: DashboardNavProps) {
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const pathname = usePathname();
@@ -92,48 +103,147 @@ export function DashboardNav() {
     };
   }, []);
 
+  useEffect(() => {
+    // Initialize with default collapsed state
+    onCollapse?.(defaultCollapsed);
+  }, []);
+
+  const handleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+    onCollapse?.(!isCollapsed);
+  };
+
   return (
-    <div className="w-64 border-r bg-card min-h-screen p-4 flex flex-col justify-between fixed h-screen gap-4">
-      <div className="space-y-6 flex-1">
-        <div className="px-3 py-2">
-          <h2 className="mb-4 px-4 text-xl font-bold text-primary">Dashboard</h2>
-          <div className="space-y-2">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center rounded-lg px-4 py-3 text-base font-medium transition-colors duration-200 hover:bg-accent hover:text-accent-foreground",
-                  pathname === item.href
-                    ? "bg-accent text-accent-foreground shadow-md"
-                    : "transparent"
-                )}
+    <div className={cn(
+      "border-r border-border/40 bg-card/80 backdrop-blur-md min-h-screen flex flex-col justify-between fixed h-screen transition-all duration-300 ease-in-out z-50",
+      isCollapsed ? "w-20" : "w-72"
+    )}>
+      {/* Top section */}
+      <div className="space-y-6 flex-1 p-6">
+        {/* Logo and collapse button */}
+        <div className="flex items-center justify-between">
+          <AnimatePresence mode="wait">
+            {!isCollapsed && (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="text-xl font-bold bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent"
               >
-                <item.icon className="mr-3 h-5 w-5" />
-                {item.title}
-              </Link>
-            ))}
-          </div>
+                <Link href="/" className="">
+                  Bhai Cabal
+                </Link>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "w-8 h-8 rounded-full transition-all duration-300 hover:bg-accent/50",
+              isCollapsed && "rotate-180 ml-auto"
+            )}
+            onClick={handleCollapse}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Navigation items */}
+        <div className="space-y-1">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
+                "hover:bg-accent/50 hover:text-accent-foreground hover:translate-x-1",
+                pathname === item.href
+                  ? "bg-accent/50 text-accent-foreground shadow-sm"
+                  : "text-muted-foreground",
+                isCollapsed ? "justify-center px-2" : "px-4"
+              )}
+              title={isCollapsed ? item.title : undefined}
+            >
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                className={cn("flex items-center", isCollapsed ? "justify-center" : "")}
+              >
+                <item.icon className={cn("h-5 w-5 flex-shrink-0", isCollapsed ? "mr-0" : "mr-3")} />
+                <AnimatePresence mode="wait">
+                  {!isCollapsed && (
+                    <motion.span
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: "auto" }}
+                      exit={{ opacity: 0, width: 0 }}
+                      className="overflow-hidden whitespace-nowrap"
+                    >
+                      {item.title}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            </Link>
+          ))}
         </div>
       </div>
-      <div className="space-y-4">
+
+      {/* Bottom section - Updated */}
+      <div className="space-y-4 p-6">
+        {/* Theme and Invite buttons */}
+        <div className={cn(
+          "flex gap-2 mb-4",
+          isCollapsed ? "flex-col items-center" : "items-center"
+        )}>
+          <ThemeToggle />
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            title="Invite Friends"
+          >
+            <Gift className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Border separator */}
+        <div className="border-t border-border/40 mb-4" />
+
+        {/* Account button */}
         <Button
           variant="ghost"
           onClick={() => setAccountDialogOpen(true)}
-          className="w-full justify-start px-4 py-3 relative group"
+          className={cn(
+            "w-full transition-all duration-200 hover:bg-accent/50",
+            isCollapsed ? "px-2 justify-center" : "px-4 justify-start gap-3"
+          )}
+          title={isCollapsed ? "Account" : undefined}
         >
           {profilePictureUrl ? (
-            <img
-              src={profilePictureUrl}
-              alt="Profile"
-              className="mr-3 h-8 w-8 rounded-full"
-            />
+            <Avatar className={cn("h-8 w-8 ring-2 ring-border", isCollapsed && "mx-auto")}>
+              <AvatarImage src={profilePictureUrl} alt="Profile" />
+              <AvatarFallback>
+                <UserCircle className="h-5 w-5" />
+              </AvatarFallback>
+            </Avatar>
           ) : (
-            <UserCircle className="mr-3 h-8 w-8" />
+            <UserCircle className="h-8 w-8" />
           )}
-          <span className="text-base font-medium">Account</span>
+          <AnimatePresence mode="wait">
+            {!isCollapsed && (
+              <motion.span
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                className="overflow-hidden whitespace-nowrap font-medium"
+              >
+                Account
+              </motion.span>
+            )}
+          </AnimatePresence>
         </Button>
       </div>
+
       <AccountDialog
         open={accountDialogOpen}
         onClose={() => setAccountDialogOpen(false)}

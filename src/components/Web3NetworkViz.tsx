@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
-import { UserCircle } from 'lucide-react';
+import { UserCircle, Loader2 } from 'lucide-react';
 import NetworkGraph from './NetworkGraph';
 
 interface DeveloperProfile {
@@ -30,8 +30,11 @@ export default function Web3NetworkViz({ developers }: Web3NetworkVizProps) {
 
   if (!developers || developers.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[600px] bg-black/90">
-        <p className="text-white">No developers found</p>
+      <div className="flex items-center justify-center h-screen bg-background/50 backdrop-blur-sm">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Loading network map...</p>
+        </div>
       </div>
     );
   }
@@ -97,4 +100,4 @@ export default function Web3NetworkViz({ developers }: Web3NetworkVizProps) {
       </AnimatePresence>
     </div>
   );
-} 
+}
