@@ -62,10 +62,15 @@ function CustomMarker({ developer, onClick, onHover, onLeave }: any) {
   );
 }
 
+// Add this function at the top level, outside the component
+const positronTiles = (x: number, y: number, z: number, dpr?: number) => {
+  return `https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/${z}/${x}/${y}${dpr && dpr === 2 ? '@2x' : ''}.png`;
+};
+
 export default function NetworkGraph({ developers, onNodeClick }: NetworkGraphProps) {
   const [hoveredDev, setHoveredDev] = useState<DeveloperNode | null>(null);
   const [center, setCenter] = useState<[number, number]>([20, 0]);
-  const [zoom, setZoom] = useState(2.5); // Increased initial zoom
+  const [zoom, setZoom] = useState(2);
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
@@ -86,6 +91,7 @@ export default function NetworkGraph({ developers, onNodeClick }: NetworkGraphPr
         twoFingerDrag={false}
         mouseEvents={true}
         touchEvents={true}
+        provider={(x, y, z, dpr) => positronTiles(x, y, z, dpr)}
       >
         <ZoomControl />
 
@@ -153,12 +159,12 @@ export default function NetworkGraph({ developers, onNodeClick }: NetworkGraphPr
       <button
         onClick={() => {
           setCenter([20, 0]);
-          setZoom(2.5);
+          setZoom(2);
         }}
         className="absolute bottom-4 right-4 p-2 bg-white rounded-lg shadow-lg hover:bg-gray-50"
         title="Reset view"
       >
-        <UserCircle className="h-4 w-4 dark:text-black" />
+        <UserCircle className="h-4 w-4" />
       </button>
     </div>
   );
