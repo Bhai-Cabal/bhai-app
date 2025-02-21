@@ -4,6 +4,7 @@ import { useFormContext, Controller } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FormItem, FormLabel, FormDescription, FormControl, FormMessage } from '@/components/ui/form';
+import { LocationInput } from '@/components/LocationInput';
 
 interface Step1Props {
   isUsernameTaken: boolean;
@@ -12,10 +13,27 @@ interface Step1Props {
   imagePreview: string | null;
   userEmail: string | null;
   isWalletLogin: boolean;
+  selectedLocation: string;
+  setSelectedLocation: React.Dispatch<React.SetStateAction<string>>;
+  isFormComplete: boolean;
 }
 
-const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, handleImageChange, imagePreview, userEmail, isWalletLogin }) => {
-  const { control, formState: { errors } } = useFormContext();
+const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, handleImageChange, imagePreview, userEmail, isWalletLogin, selectedLocation, setSelectedLocation, isFormComplete }) => {
+  const { control, formState: { errors }, trigger } = useFormContext();
+
+  const getLocationDisplayName = (locationString: string) => {
+    try {
+      const locationData = JSON.parse(locationString);
+      return locationData.display_name || locationString;
+    } catch (e) {
+      return locationString;
+    }
+  };
+
+  // Add onBlur handler to validate fields when user leaves input
+  const handleBlur = async (fieldName: string) => {
+    await trigger(fieldName);
+  };
 
   return (
     <div className="space-y-6">
@@ -32,12 +50,13 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
               <Input
                 placeholder="satoshi"
                 {...field}
-                className="text-lg p-6"
+                className={`text-lg p-6 ${errors.username ? 'border-destructive' : ''}`}
                 minLength={3}
                 maxLength={50}
                 onChange={handleUsernameChange}
                 value={field.value || ''}
                 required
+                onBlur={() => handleBlur('username')}
               />
             </FormControl>
             {isUsernameTaken && <p className="text-red-500">Username is already taken</p>}
@@ -63,6 +82,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                 maxLength={100}
                 value={field.value || ''}
                 required
+                onBlur={() => handleBlur('fullName')}
               />
             </FormControl>
             <FormMessage>{typeof errors.fullName?.message === 'string' ? errors.fullName?.message : null}</FormMessage>
@@ -87,6 +107,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                 {...field}
                 value={field.value || ''}
                 required
+                onBlur={() => handleBlur('bio')}
               />
             </FormControl>
             <FormMessage>{typeof errors.bio?.message === 'string' ? errors.bio?.message : null}</FormMessage>
@@ -94,30 +115,66 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         )}
       />
 
-      {isWalletLogin && (
+      <Controller
+        name="location"
+        control={control}
+        rules={{ required: "Location is required" }}
+        render={({ field }) => (
+          <FormItem className="flex flex-col">
+            <FormLabel>Location</FormLabel>
+            <FormDescription>
+              Start typing to get location suggestions
+            </FormDescription>
+            <FormControl>
+              <LocationInput 
+                selectedLocation={field.value ? getLocationDisplayName(field.value) : ''}
+                setSelectedLocation={setSelectedLocation}
+                error={errors.location?.message?.toString()}
+              />
+            </FormControl>
+            <FormMessage>{errors.location?.message?.toString()}</FormMessage>
+          </FormItem>
+        )}
+      />
+
+      {isWalletLogin ? (
         <Controller
           name="email"
           control={control}
+          rules={{ required: "Email is required for wallet login" }}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormDescription>
-                Your email address
+                Please provide an email address for your account
               </FormDescription>
               <FormControl>
                 <Input
                   placeholder="example@example.com"
                   {...field}
                   className="text-lg p-6"
-                  value={field.value || ''}
+                  type="email"
                   required
+                  onBlur={() => handleBlur('email')}
                 />
               </FormControl>
-              <FormMessage>{typeof errors.email?.message === 'string' ? errors.email?.message : null}</FormMessage>
+              <FormMessage>{errors.email?.message?.toString()}</FormMessage>
             </FormItem>
           )}
         />
-      )}
+      ) : userEmail ? (
+        <FormItem>
+          <FormLabel>Email</FormLabel>
+          <FormDescription>Your account email address</FormDescription>
+          <FormControl>
+            <Input
+              value={userEmail}
+              className="text-lg p-6 bg-muted"
+              disabled
+            />
+          </FormControl>
+        </FormItem>
+      ) : null}
 
       <Controller
         name="profilePicture"

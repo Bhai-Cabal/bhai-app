@@ -24,6 +24,8 @@ const OnboardingPage: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUsernameTaken, setIsUsernameTaken] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState('');
+  const [isFormComplete, setIsFormComplete] = useState(false);
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(formSchema),
@@ -31,10 +33,11 @@ const OnboardingPage: React.FC = () => {
       username: '',
       fullName: '',
       bio: '',
-      profilePicture: undefined,
+      location: '',
       email: '',
+      profilePicture: undefined,
     },
-    mode: 'onChange',
+    mode: 'onChange', // Enable real-time validation
   });
 
   useEffect(() => {
@@ -99,29 +102,43 @@ const OnboardingPage: React.FC = () => {
 
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const values = form.getValues();
-
-    if (!user?.id) return;
+    const isValid = await form.trigger();
+    
+    if (!isValid || !isFormComplete) {
+      // Show validation errors
+      const errors = form.formState.errors;
+      if (Object.keys(errors).length > 0) {
+        console.log("Form errors:", errors);
+        setError("Please fill in all required fields correctly.");
+        return;
+      }
+    }
 
     setIsLoading(true);
     setError(null);
 
     try {
+      const values = form.getValues();
       const userUUID = uuid();
-      let profilePicturePath = null;
+      let profilePicturePath: string | null = null; // Declare the variable here
 
-      const { error: userError } = await supabase.from('users').insert({
+      // First create user without profile picture
+      const profileData = {
         id: userUUID,
-        auth_id: user.id,
+        auth_id: user?.id ?? '',
         username: values.username,
         full_name: values.fullName,
         bio: values.bio,
-        email: values.email || user.email?.address,
+        email: isWalletLogin ? values.email : userEmail,
+        location: selectedLocation,
         profile_completion_percentage: 20,
-      });
+      };
+
+      const { error: userError } = await supabase.from('users').insert(profileData);
 
       if (userError) throw userError;
 
+      // Handle profile picture upload if present
       if (values.profilePicture) {
         const file = values.profilePicture;
         const { data, error: uploadError } = await supabase.storage
@@ -129,14 +146,17 @@ const OnboardingPage: React.FC = () => {
           .upload(`public/${userUUID}/${file.name}`, file);
 
         if (uploadError) throw uploadError;
-        profilePicturePath = data.path;
+        if (data) {
+          profilePicturePath = data.path;
 
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({ profile_picture_path: profilePicturePath })
-          .eq('id', userUUID);
+          // Update user with profile picture path
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ profile_picture_path: profilePicturePath })
+            .eq('id', userUUID);
 
-        if (updateError) throw updateError;
+          if (updateError) throw updateError;
+        }
       }
 
       router.push('/dashboard/profile');
@@ -149,17 +169,54 @@ const OnboardingPage: React.FC = () => {
   };
 
   const userEmail = user?.email?.address ?? null;
-  const isWalletLogin = !userEmail;
+  const isWalletLogin = !userEmail && user?.wallet; // Check if user has a wallet but no email
 
   useEffect(() => {
     const subscription = form.watch(() => {
-      form.trigger().then((isValid) => {
-        setIsFormValid(isValid && !isUsernameTaken);
-      });
+      validateForm();
     });
 
     return () => subscription.unsubscribe();
   }, [form, isUsernameTaken]);
+
+  // Form validation function
+  const validateForm = async () => {
+    const values = form.getValues();
+    const isValid = await form.trigger(); // Trigger validation for all fields
+
+    const isComplete = !!(
+      values.username &&
+      values.fullName &&
+      values.bio &&
+      values.location &&
+      !isUsernameTaken &&
+      isValid &&
+      (!isWalletLogin || (isWalletLogin && values.email)) // Only require email for wallet login
+    );
+
+    setIsFormComplete(isComplete);
+  };
+
+  // Update location in form when selectedLocation changes
+  useEffect(() => {
+    if (selectedLocation) {
+      form.setValue('location', selectedLocation, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+      validateForm();
+    }
+  }, [selectedLocation]);
+
+  useEffect(() => {
+    // Set email in form if user logged in with email
+    if (userEmail && !isWalletLogin) {
+      form.setValue('email', userEmail, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  }, [userEmail, isWalletLogin]);
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -193,14 +250,17 @@ const OnboardingPage: React.FC = () => {
                 handleImageChange={handleImageChange}
                 imagePreview={imagePreview}
                 userEmail={userEmail}
-                isWalletLogin={isWalletLogin}
+                isWalletLogin={!!isWalletLogin}
+                selectedLocation={selectedLocation}
+                setSelectedLocation={setSelectedLocation}
+                isFormComplete={isFormComplete}
               />
 
               <div className="flex flex-col gap-4 items-center mt-8">
                 <Button 
                   type="submit" 
-                  disabled={isLoading || !isFormValid}
-                  className="w-full max-w-sm"
+                  disabled={isLoading || !isFormComplete}
+                  className={`w-full max-w-sm ${!isFormComplete ? 'cursor-not-allowed opacity-50' : 'hover:bg-primary-dark'}`}
                 >
                   {isLoading ? (
                     <>
@@ -211,11 +271,20 @@ const OnboardingPage: React.FC = () => {
                     'Complete & Continue to Profile'
                   )}
                 </Button>
-                {!isFormValid && (
+                {!isFormComplete && (
                   <p className="text-sm text-muted-foreground">
-                    Please fill in all required fields correctly to continue
+                    {form.formState.errors.root?.message || 
+                     "Please fill in all required fields correctly to continue"}
                   </p>
                 )}
+                {/* Show field-specific errors */}
+                {/* <div className="space-y-2 w-full">
+                  {Object.keys(form.formState.errors).map((field) => (
+                    <p key={field} className="text-sm text-destructive">
+                      {String(form.formState.errors[field as keyof OnboardingFormValues]?.message)}
+                    </p>
+                  ))}
+                </div> */}
               </div>
             </form>
           </FormProvider>
