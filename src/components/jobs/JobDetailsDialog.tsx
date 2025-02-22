@@ -160,7 +160,7 @@ export function JobDetailsDialog({
           <div>
             <h3 className="text-lg font-medium mb-3">Required Skills</h3>
             <div className="flex flex-wrap gap-2">
-              {job.skills.map((skill) => (
+              {job.skills && job.skills.map((skill) => (
                 <Badge key={skill} variant="secondary" className="px-3 py-1">
                   {skill}
                 </Badge>

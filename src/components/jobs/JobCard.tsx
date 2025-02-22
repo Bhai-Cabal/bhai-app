@@ -8,6 +8,7 @@ import { Globe, Briefcase, Bitcoin, BarChart2 } from 'lucide-react';
 interface JobCardProps {
   job: Job;
   onJobUpdate?: () => void;
+  publicView?: boolean;
   isCreator?: boolean;
   hasApplied?: boolean;
   profileCompletion: number;
@@ -76,7 +77,7 @@ export function JobCard({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {job.skills.map((skill) => (
+          {job.skills?.map((skill) => (
             <Badge key={skill} variant="outline">
               {skill}
             </Badge>

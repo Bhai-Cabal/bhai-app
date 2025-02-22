@@ -51,7 +51,10 @@ interface Job {
   skills: string[];
   created_at: string;
   status: string;
+  experience_level: string;
   applications?: any[];
+  isCreator?: boolean;
+  hasApplied?: boolean;
 }
 
 interface Company {
@@ -176,7 +179,7 @@ export default function JobsPage() {
           companyWebsite: job.companies?.website,
           skills: job.job_skills?.map((js: any) => js.skills.name).filter(Boolean) || [],
           isCreator: job.user_id === userUuid,
-          hasApplied: job.job_applications?.some(app => app.user_id === userUuid) || false,
+          hasApplied: job.job_applications?.some((app: { user_id: string }) => app.user_id === userUuid) || false,
           posted: new Date(job.created_at).toLocaleDateString()
         }));
 

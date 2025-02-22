@@ -19,6 +19,23 @@ interface AppliedJob {
   company_website?: string;
 }
 
+interface JobApplication {
+  id: string;
+  status: string;
+  created_at: string;
+  jobs: {
+    id: string;
+    title: string;
+    location: string;
+    job_type: string;
+    salary_range: string | null;
+    companies: {
+      name: string;
+      website: string | null;
+    };
+  };
+}
+
 export function AppliedJobsList() {
   const { user } = usePrivy();
   const [appliedJobs, setAppliedJobs] = useState<AppliedJob[]>([]);
@@ -54,15 +71,15 @@ export function AppliedJobsList() {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-
-        const formattedJobs = data.map(app => ({
-          id: app.jobs[0].id,
-          title: app.jobs[0].title,
-          company: app.jobs[0].companies[0].name,
-          company_website: app.jobs[0].companies[0].website,
-          location: app.jobs[0].location,
-          job_type: app.jobs[0].job_type,
-          salary_range: app.jobs[0].salary_range,
+        
+        const formattedJobs: AppliedJob[] = (data as unknown as JobApplication[]).map(app => ({
+          id: app.jobs.id,
+          title: app.jobs.title,
+          company: app.jobs.companies.name,
+          company_website: app.jobs.companies.website || undefined,
+          location: app.jobs.location,
+          job_type: app.jobs.job_type,
+          salary_range: app.jobs.salary_range || 'Not specified',
           applied_date: new Date(app.created_at).toLocaleDateString(),
           application_status: app.status
         }));

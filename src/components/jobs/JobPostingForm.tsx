@@ -53,6 +53,9 @@ export function JobPostingForm({
   initialCompanies,
   initialSkills 
 }: JobPostingFormProps) {
+  // Add this console.log to debug
+  console.log('Existing Job Data:', existingJob);
+  
   const { user } = usePrivy();
   const { toast } = useToast();
   
@@ -65,8 +68,37 @@ export function JobPostingForm({
     blockchain: existingJob?.blockchain || '',
     description: existingJob?.description || '',
     experienceLevel: existingJob?.experience_level || '',
-    selectedSkills: []
+    selectedSkills: [] // This will be set in useEffect
   });
+
+  // Add this useEffect to handle initial skills
+  useEffect(() => {
+    if (existingJob?.job_skills && initialSkills) {
+      const jobSkills = existingJob.job_skills.map(js => {
+        // Find the matching skill from initialSkills
+        const skill = initialSkills.find(s => s.id === js.skill_id);
+        return skill || null;
+      }).filter((skill): skill is Skill => skill !== null);
+
+      setFormData(prev => ({
+        ...prev,
+        selectedSkills: jobSkills
+      }));
+    }
+  }, [existingJob, initialSkills]);
+
+  // Add this useEffect to handle initial company
+  useEffect(() => {
+    if (existingJob?.company_id && initialCompanies) {
+      const company = initialCompanies.find(c => c.id === existingJob.company_id);
+      if (company) {
+        setFormData(prev => ({
+          ...prev,
+          company: company.name
+        }));
+      }
+    }
+  }, [existingJob, initialCompanies]);
 
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [companies, setCompanies] = useState<Company[]>(initialCompanies || []);

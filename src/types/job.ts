@@ -4,18 +4,21 @@ export interface Job {
   company: string;
   company_id?: string;
   location: string;
-  salary_range: string;
   job_type: string;
   blockchain: string;
   description: string;
-  skills: string[];
-  created_at: string;
+  skills?: string[];
+  salary_range: string;
+  experience_level: string;
   status: string;
+  created_at: string;
+  job_skills?: {
+    skill_id: string;
+    skills: Skill;
+  }[];
   user_id?: string;
   applications?: JobApplication[];
   companies?: Company;
-  job_skills?: JobSkill[];
-  experience_level?: string;
   companyWebsite?: string;
   applicationsCount?: number;
   postedBy?: string;
@@ -26,17 +29,13 @@ export interface Job {
 export interface Company {
   id: string;
   name: string;
-  website: string;
+  website?: string;
 }
 
 export interface Skill {
   id: string;
   name: string;
   description?: string;
-}
-
-export interface JobSkill {
-  skills: Skill;
 }
 
 export interface JobApplication {

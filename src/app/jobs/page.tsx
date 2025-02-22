@@ -25,6 +25,7 @@ interface JobResponse {
   blockchain: string;
   created_at: string;
   status: string;
+  experience_level: string;
   companies: {
     id: string; // Add id field to match Company type
     name: string;
@@ -223,6 +224,7 @@ const JobListings = () => {
                   job={job}
                   publicView={true}
                   onJobUpdate={() => setFilters(prev => ({ ...prev }))}
+                  profileCompletion={100} // Assuming a default value of 100 for profileCompletion
                 />
               ))}
             </div>
@@ -267,7 +269,8 @@ const formatJobData = (job: JobResponse): Job => ({
   skills: job.job_skills?.map(js => js.skills.name).filter(Boolean) || [],
   applicationsCount: job.job_applications?.length || 0,
   applications: job.job_applications || [],
-  posted: new Date(job.created_at).toLocaleDateString()
+  posted: new Date(job.created_at).toLocaleDateString(),
+  experience_level: job.experience_level || 'Not specified'
 });
 
 export default JobListings;

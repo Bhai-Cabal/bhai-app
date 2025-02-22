@@ -14,6 +14,35 @@ import { useToast } from '@/hooks/use-toast';
 import { CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
+interface JobApplication {
+  id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  user_id: string;
+  users: {
+    id: string;
+    full_name: string;
+    profile_picture_path: string;
+    email: string;
+  };
+}
+
+interface CreatedJob {
+  id: string;
+  title: string;
+  company_id: string;
+  status: 'active' | 'closed';
+  created_at: string;
+  companies: {
+    id: string;
+    name: string;
+    website: string;
+  }[];
+  applications?: JobApplication[];
+  company?: string;
+  companyWebsite?: string;
+}
+
 interface CreatedJobsListProps {
   onJobUpdate?: () => void;
 }
@@ -21,7 +50,7 @@ interface CreatedJobsListProps {
 export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
   const { user } = usePrivy();
   const { toast } = useToast();
-  const [createdJobs, setCreatedJobs] = useState<Job[]>([]);
+  const [createdJobs, setCreatedJobs] = useState<CreatedJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [jobToClose, setJobToClose] = useState<string | null>(null);
@@ -54,7 +83,7 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
 
       // Fetch applications separately for each job
       const jobsWithApplications = await Promise.all(
-        jobsData.map(async (job) => {
+        (jobsData as CreatedJob[]).map(async (job) => {
           const { data: applications, error: applicationsError } = await supabase
             .from('job_applications')
             .select(`
@@ -75,7 +104,7 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
 
           return {
             ...job,
-            applications: applications || [],
+            applications: (applications as unknown as JobApplication[]) || [],
             company: job.companies?.[0]?.name,
             companyWebsite: job.companies?.[0]?.website
           };
@@ -87,6 +116,97 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
       console.error('Error fetching created jobs:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchJobs = async () => {
+    if (!user?.id) return;
+
+    try {
+      const userUuid = await getUserUuid(user.id);
+      if (!userUuid) return;
+
+      const { data, error } = await supabase
+        .from('jobs')
+        .select(`
+          *,
+          companies (
+            id,
+            name,
+            website
+          ),
+          job_skills (
+            skill_id,
+            skills (
+              id,
+              name,
+              description
+            )
+          )
+        `)
+        .eq('user_id', userUuid)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      // ... rest of the code
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+    }
+  };
+
+  const fetchJobDetails = async (jobId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select(`
+          *,
+          companies (
+            id,
+            name,
+            website
+          ),
+          job_skills (
+            skill_id,
+            skills (
+              id,
+              name,
+              description
+            )
+          )
+        `)
+        .eq('id', jobId)
+        .single();
+
+      if (error) throw error;
+      
+      if (data) {
+        setEditingJob({
+          id: data.id,
+          title: data.title,
+          company_id: data.company_id,
+          company: data.companies?.name || '',
+          companyWebsite: data.companies?.website || '',
+          location: data.location,
+          salary_range: data.salary_range,
+          job_type: data.job_type,
+          blockchain: data.blockchain,
+          description: data.description,
+          experience_level: data.experience_level,
+          status: data.status,
+          created_at: data.created_at,
+          job_skills: data.job_skills?.map((js: { skill_id: string; skills: { id: string; name: string; description: string; }; }) => ({
+            skill_id: js.skill_id,
+            skills: js.skills
+          }))
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching job details:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load job details",
+        variant: "destructive"
+      });
     }
   };
 
@@ -257,7 +377,7 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => setEditingJob(job)}
+                onClick={() => fetchJobDetails(job.id)}
               >
                 Edit Job
               </Button>
