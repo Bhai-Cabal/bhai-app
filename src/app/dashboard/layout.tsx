@@ -12,7 +12,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { user } = usePrivy();
+  const { user, authenticated } = usePrivy();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
   const handleSidebarCollapse = (collapsed: boolean) => {
@@ -20,6 +20,11 @@ export default function DashboardLayout({
   };
 
   useEffect(() => {
+    if (!authenticated) {
+      router.push('/');
+      return;
+    }
+
     const checkUserData = async () => {
       if (!user?.id) return;
 
@@ -35,7 +40,7 @@ export default function DashboardLayout({
     };
 
     checkUserData();
-  }, [user, router]);
+  }, [user, router, authenticated]);
 
   return (
     <div className="min-h-screen bg-background ">

@@ -204,7 +204,7 @@ export function JobCard({ job, onJobUpdate }: JobCardProps) {
                 login();
               }}
             >
-              Login to Apply
+              Apply
             </Button>
           ) : profileCompletion < 100 ? (
             <div className="space-y-4">

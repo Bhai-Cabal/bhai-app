@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
 
@@ -10,22 +10,37 @@ interface LocationInputProps {
 
 interface LocationResult {
   place_id: string;
+  properties: {
+    name: string;
+    country: string;
+    state?: string;
+    city?: string;
+    osm_value: string;
+    osm_type: string;
+  };
+  geometry: {
+    coordinates: [number, number];
+  };
   display_name: string;
   type: string;
   lat: string;
   lon: string;
 }
 
-export const LocationInput: React.FC<LocationInputProps> = ({ 
-  selectedLocation, 
+const DEBOUNCE_DELAY = 300;
+const PHOTON_API_URL = 'https://photon.komoot.io/api/';
+
+export const LocationInput: React.FC<LocationInputProps> = ({
+  selectedLocation,
   setSelectedLocation,
-  error 
+  error
 }) => {
   const [query, setQuery] = useState('');
   const [displayValue, setDisplayValue] = useState('');
   const [results, setResults] = useState<LocationResult[]>([]);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const debounceTimeout = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     setQuery(selectedLocation || '');
@@ -35,11 +50,50 @@ export const LocationInput: React.FC<LocationInputProps> = ({
     setDisplayValue(selectedLocation || '');
   }, [selectedLocation]);
 
+  const handleSearch = useCallback(async () => {
+    if (query.length < 2) return;
+    
+    try {
+      const response = await fetch(
+        `${PHOTON_API_URL}?q=${encodeURIComponent(query)}&limit=5`
+      );
+      const data = await response.json();
+      
+      const filteredResults = data.features
+        .filter((feature: LocationResult) => {
+          const props = feature.properties;
+          return props.city || props.state || props.country;
+        })
+        .map((feature: LocationResult) => ({
+          place_id: `${feature.geometry.coordinates[0]}-${feature.geometry.coordinates[1]}`,
+          display_name: formatLocationName(feature.properties),
+          type: getLocationType(feature.properties),
+          lat: feature.geometry.coordinates[1].toString(),
+          lon: feature.geometry.coordinates[0].toString()
+        }));
+
+      setResults(filteredResults);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      setResults([]);
+    }
+  }, [query]);
+
   useEffect(() => {
     if (query && query !== selectedLocation) {
-      handleSearch();
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+      debounceTimeout.current = setTimeout(() => {
+        handleSearch();
+      }, DEBOUNCE_DELAY);
     }
-  }, [query, selectedLocation]);
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [query, selectedLocation, handleSearch]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -54,22 +108,19 @@ export const LocationInput: React.FC<LocationInputProps> = ({
     };
   }, []);
 
-  const handleSearch = async () => {
-    if (query.length < 2) return;
-    
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`
-      );
-      const data: LocationResult[] = await response.json();
-      const filteredResults = data.filter(result => 
-        result.type === 'administrative' || result.type === 'country'
-      );
-      setResults(filteredResults);
-    } catch (error) {
-      console.error('Error fetching locations:', error);
-      setResults([]);
-    }
+  const formatLocationName = (props: LocationResult['properties']): string => {
+    const parts = [];
+    if (props.city) parts.push(props.city);
+    if (props.state) parts.push(props.state);
+    if (props.country) parts.push(props.country);
+    return parts.join(', ');
+  };
+
+  const getLocationType = (props: LocationResult['properties']): string => {
+    if (props.city) return 'city';
+    if (props.state) return 'state';
+    if (props.country) return 'country';
+    return props.osm_value || 'place';
   };
 
   const handleSelect = (result: LocationResult) => {
@@ -96,21 +147,30 @@ export const LocationInput: React.FC<LocationInputProps> = ({
         placeholder="Enter a location"
         className={cn(
           "w-full p-3 border rounded-lg dark:bg-black dark:border-gray-700 dark:text-white",
-          error && "border-red-500"
+          error && "border-red-500",
+          "focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         )}
         onFocus={() => setIsInputFocused(true)}
       />
       {isInputFocused && results.length > 0 && (
-        <div className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg dark:bg-black dark:border-gray-700">
+        <div className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg dark:bg-black dark:border-gray-700 max-h-60 overflow-y-auto">
           {results.map((result) => (
             <div
               key={result.place_id}
-              className="p-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white"
+              className="p-3 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white flex flex-col"
               onClick={() => handleSelect(result)}
             >
-              {result.display_name}
+              <span className="font-medium">{result.display_name}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {result.type.charAt(0).toUpperCase() + result.type.slice(1)}
+              </span>
             </div>
           ))}
+        </div>
+      )}
+      {isInputFocused && query.length >= 2 && results.length === 0 && (
+        <div className="absolute z-10 w-full bg-white border rounded-lg mt-1 p-3 dark:bg-black dark:border-gray-700 text-gray-500">
+          No locations found
         </div>
       )}
     </div>
