@@ -196,13 +196,13 @@ export default function LandingPage() {
                 </Link>
               )}
               <div className="flex items-center space-x-6 border-l pl-6">
-                <a href="https://twitter.com/bhaicabal" 
+                <a href="https://x.com/bhainebola?s=21" 
                    target="_blank" 
                    rel="noopener noreferrer"
                    className="hover:text-primary transition-all hover:scale-110">
                   <Twitter className="h-5 w-5" />
                 </a>
-                <a href="https://t.me/bhaicabal" 
+                <a href="https://t.me/bhaibhaibhaibhaibhaibhaibhaibhai" 
                    target="_blank" 
                    rel="noopener noreferrer"
                    className="hover:text-primary transition-all hover:scale-110">
