@@ -37,6 +37,7 @@ import { JobCard } from "@/components/jobs/JobCard";
 import { JobPostingForm } from "@/components/jobs/JobPostingForm";
 import { JobFilters } from "@/components/jobs/JobFilters";
 import { CreatedJobsList } from "@/components/jobs/CreatedJobsList";
+import { AppliedJobsList } from "@/components/jobs/AppliedJobsList";
 
 interface Job {
   id: string;
@@ -85,6 +86,7 @@ export default function JobsPage() {
   // Add these states at the top of the component
   const [error, setError] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [profileCompletion, setProfileCompletion] = useState(0);
 
   // Fetch static data once
   useEffect(() => {
@@ -111,12 +113,14 @@ export default function JobsPage() {
 
   // Updated jobs fetching logic
   useEffect(() => {
-    if (activeTab !== 'browse') return;
+    if (activeTab !== 'browse' || !user) return;
 
     const fetchJobs = async () => {
       setError(null);
       setIsLoading(true);
       try {
+        const userUuid = await getUserUuid(user.id);
+        
         let query = supabase
           .from('jobs')
           .select(`
@@ -126,26 +130,20 @@ export default function JobsPage() {
               name,
               website
             ),
-            job_skills (
+            job_skills!inner (
               skills (
                 id,
                 name
               )
             ),
-            job_applications (
+            job_applications!left (
               id,
               status,
               user_id
-            ),
-            users (
-              id,
-              username,
-              profile_picture_path
             )
           `)
-          .eq('status', 'active');
+          .in('status', ['active', 'closed']); // Show both active and closed jobs
 
-        // Apply basic filters first
         if (filters.type !== 'all') {
           query = query.eq('job_type', filters.type.toLowerCase());
         }
@@ -158,7 +156,6 @@ export default function JobsPage() {
 
         let filteredJobs = data || [];
 
-        // Client-side search
         if (filters.searchQuery.trim()) {
           const searchTerm = filters.searchQuery.toLowerCase().trim();
           filteredJobs = filteredJobs.filter(job => {
@@ -166,14 +163,24 @@ export default function JobsPage() {
               job.title,
               job.description,
               job.companies?.name,
-              ...(job.job_skills?.map((js: { skills: Skill }) => js.skills.name) || [])
+              ...(job.job_skills?.map((js: any) => js.skills.name) || [])
             ].map(item => (item || '').toLowerCase());
             
             return searchableContent.some(content => content.includes(searchTerm));
           });
         }
 
-        setJobs(filteredJobs.map(formatJobData));
+        const formattedJobs = filteredJobs.map(job => ({
+          ...job,
+          company: job.companies?.name || 'Unknown Company',
+          companyWebsite: job.companies?.website,
+          skills: job.job_skills?.map((js: any) => js.skills.name).filter(Boolean) || [],
+          isCreator: job.user_id === userUuid,
+          hasApplied: job.job_applications?.some(app => app.user_id === userUuid) || false,
+          posted: new Date(job.created_at).toLocaleDateString()
+        }));
+
+        setJobs(formattedJobs);
       } catch (error) {
         console.error('Error fetching jobs:', error);
         setError('Failed to load jobs. Please try again.');
@@ -182,10 +189,59 @@ export default function JobsPage() {
       }
     };
 
-    // Debounce the search
     const handler = setTimeout(fetchJobs, 300);
     return () => clearTimeout(handler);
-  }, [filters, activeTab]);
+  }, [filters, activeTab, user]);
+
+  useEffect(() => {
+    // Subscribe to real-time updates for job applications
+    if (!user) return;
+
+    const channel = supabase
+      .channel('job-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'job_applications'
+        },
+        () => {
+          // Refresh jobs data when applications change
+          if (activeTab === 'browse') {
+            setFilters(prev => ({ ...prev }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, activeTab]);
+
+  // Add this effect to fetch profile completion once
+  useEffect(() => {
+    const fetchProfileCompletion = async () => {
+      if (!user) return;
+
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("profile_completion_percentage")
+          .eq("auth_id", user.id)
+          .single();
+
+        if (data) {
+          setProfileCompletion(data.profile_completion_percentage || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching profile completion:', error);
+      }
+    };
+
+    fetchProfileCompletion();
+  }, [user]);
 
   return (
     <div className="max-w-7xl mx-auto p-4 space-y-8">
@@ -218,6 +274,7 @@ export default function JobsPage() {
       <Tabs defaultValue="browse" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="browse">Browse Jobs</TabsTrigger>
+          <TabsTrigger value="applied">Applied Jobs</TabsTrigger>
           <TabsTrigger value="created">My Job Postings</TabsTrigger>
         </TabsList>
 
@@ -271,6 +328,9 @@ export default function JobsPage() {
                 <JobCard 
                   key={job.id} 
                   job={job}
+                  isCreator={job.isCreator}
+                  hasApplied={job.hasApplied}
+                  profileCompletion={profileCompletion}
                   onJobUpdate={() => {
                     setFilters(prev => ({ ...prev }));
                   }}
@@ -278,6 +338,10 @@ export default function JobsPage() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="applied">
+          <AppliedJobsList />
         </TabsContent>
 
         <TabsContent value="created">

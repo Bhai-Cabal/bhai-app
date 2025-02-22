@@ -24,6 +24,7 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
   const [createdJobs, setCreatedJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [jobToClose, setJobToClose] = useState<string | null>(null);
 
   const fetchCreatedJobs = async () => {
     if (!user?.id) return;
@@ -32,44 +33,86 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
       const userUuid = await getUserUuid(user.id);
       if (!userUuid) return;
 
-      const { data, error } = await supabase
+      const { data: jobsData, error: jobsError } = await supabase
         .from('jobs')
         .select(`
-          *,
+          id,
+          title,
+          company_id,
+          status,
+          created_at,
           companies (
             id,
             name,
             website
-          ),
-          job_skills (
-            skills (
-              id,
-              name
-            )
-          ),
-          job_applications (
-            id,
-            status,
-            user_id,
-            users (
-              id,
-              full_name,
-              profile_picture_path,
-              email
-            )
           )
         `)
         .eq('user_id', userUuid)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setCreatedJobs(data || []);
+      if (jobsError) throw jobsError;
+
+      // Fetch applications separately for each job
+      const jobsWithApplications = await Promise.all(
+        jobsData.map(async (job) => {
+          const { data: applications, error: applicationsError } = await supabase
+            .from('job_applications')
+            .select(`
+              id,
+              status,
+              created_at,
+              user_id,
+              users (
+                id,
+                full_name,
+                profile_picture_path,
+                email
+              )
+            `)
+            .eq('job_id', job.id);
+
+          if (applicationsError) throw applicationsError;
+
+          return {
+            ...job,
+            applications: applications || [],
+            company: job.companies?.[0]?.name,
+            companyWebsite: job.companies?.[0]?.website
+          };
+        })
+      );
+
+      setCreatedJobs(jobsWithApplications);
     } catch (error) {
       console.error('Error fetching created jobs:', error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Add real-time subscription for applications
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('job-applications-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'job_applications'
+        },
+        () => {
+          fetchCreatedJobs();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   useEffect(() => {
     fetchCreatedJobs();
@@ -79,12 +122,25 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
     try {
       const { error } = await supabase
         .from('job_applications')
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', applicationId);
 
       if (error) throw error;
 
-      // Refresh jobs list
+      // Update local state immediately
+      setCreatedJobs(prev => prev.map(job => ({
+        ...job,
+        applications: job.applications?.map(app => 
+          app.id === applicationId 
+            ? { ...app, status: newStatus }
+            : app
+        )
+      })));
+
+      // Refresh jobs list in background
       fetchCreatedJobs();
       if (onJobUpdate) onJobUpdate();
 
@@ -138,6 +194,36 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
       toast({
         title: "Error",
         description: "Failed to delete job",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleJobStatusChange = async (jobId: string, newStatus: 'active' | 'closed') => {
+    try {
+      const { error } = await supabase
+        .from('jobs')
+        .update({ status: newStatus })
+        .eq('id', jobId);
+
+      if (error) throw error;
+
+      // Update local state
+      setCreatedJobs(prev => prev.map(job => 
+        job.id === jobId ? { ...job, status: newStatus } : job
+      ));
+
+      toast({
+        title: "Success",
+        description: `Job ${newStatus === 'active' ? 'reactivated' : 'closed'} successfully`,
+      });
+
+      if (onJobUpdate) onJobUpdate();
+    } catch (error) {
+      console.error('Error updating job status:', error);
+      toast({
+        title: "Error",
+        description: `Failed to ${newStatus === 'active' ? 'reactivate' : 'close'} job posting`,
         variant: "destructive"
       });
     }
@@ -203,7 +289,7 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Badge>{job.status}</Badge>
+              {/* <Badge>{job.status}</Badge> */}
             </div>
           </div>
           
@@ -242,15 +328,59 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
                             </Button>
                           </>
                         ) : (
-                          <Badge variant={application.status === 'accepted' ? 'default' : 'destructive'}>
-                            {application.status}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={application.status === 'accepted' ? 'default' : 'destructive'}>
+                              {application.status}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (application.status === 'rejected') {
+                                  handleApplicationStatus(application.id, 'accepted');
+                                } else if (application.status === 'accepted') {
+                                  handleApplicationStatus(application.id, 'rejected');
+                                }
+                              }}
+                            >
+                              Change to {application.status === 'rejected' ? 'Accept' : 'Reject'}
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </div>
                   </Card>
                 ))}
               </div>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>
+                {job.status === 'active' ? 'Active' : 'Closed'}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                {job.applications?.length || 0} application(s)
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {job.status === 'active' ? (
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => handleJobStatusChange(job.id, 'closed')}
+                >
+                  Close Job
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleJobStatusChange(job.id, 'active')}
+                >
+                  Reactivate Job
+                </Button>
+              )}
             </div>
           </div>
         </Card>
@@ -280,4 +410,4 @@ export function CreatedJobsList({ onJobUpdate }: CreatedJobsListProps) {
       </Dialog>
     </div>
   );
-} 
+}

@@ -8,14 +8,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Job } from "@/types/job";
 import { Globe, Briefcase, Bitcoin, DollarSign, BarChart2 } from "lucide-react";
+import { usePrivy } from '@privy-io/react-auth';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { getUserUuid } from '@/lib/user-helpers';
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
+import { useState } from 'react';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Info, CheckCircle, AlertCircle } from "lucide-react";
 
 interface JobDetailsDialogProps {
   job: Job;
   isOpen: boolean;
   onClose: () => void;
   isCreator: boolean;
-  onApply: () => void;
-  onEdit?: () => void;
+  hasApplied: boolean;
+  profileCompletion: number;
+  onJobUpdate?: () => void;
 }
 
 export function JobDetailsDialog({
@@ -23,9 +33,66 @@ export function JobDetailsDialog({
   isOpen,
   onClose,
   isCreator,
-  onApply,
-  onEdit
+  hasApplied,
+  profileCompletion,
+  onJobUpdate
 }: JobDetailsDialogProps) {
+  const { user, login } = usePrivy();
+  const { toast } = useToast();
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleApply = async () => {
+    if (!user) {
+      login();
+      return;
+    }
+
+    if (profileCompletion < 100) {
+      toast({
+        title: "Profile Incomplete",
+        description: "Please complete your profile before applying for jobs.",
+        variant: "destructive"
+      });
+      router.push('/dashboard/profile');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const userUuid = await getUserUuid(user.id);
+      if (!userUuid) throw new Error("User profile not found");
+
+      const { error } = await supabase
+        .from('job_applications')
+        .insert({
+          job_id: job.id,
+          user_id: userUuid,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Application submitted successfully!"
+      });
+      
+      if (onJobUpdate) onJobUpdate();
+      onClose();
+    } catch (error) {
+      console.error('Error applying for job:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit application. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -46,11 +113,6 @@ export function JobDetailsDialog({
                 <Badge variant="outline">{job.posted}</Badge>
               </div>
             </div>
-            {/* {isCreator && onEdit && (
-              <Button variant="outline" onClick={onEdit}>
-                Edit Job
-              </Button>
-            )} */}
           </div>
         </DialogHeader>
 
@@ -120,13 +182,60 @@ export function JobDetailsDialog({
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-4 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-            {!isCreator && (
-              <Button onClick={onApply}>Apply Now</Button>
+          {/* Application Section */}
+          <div className="pt-4 border-t">
+            {isCreator ? (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Your Job Posting</AlertTitle>
+                <AlertDescription>
+                  You can manage applications from the "My Job Postings" tab
+                </AlertDescription>
+              </Alert>
+            ) : job.status === 'closed' ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Applications Closed</AlertTitle>
+                <AlertDescription>
+                  This position is no longer accepting new applications
+                </AlertDescription>
+              </Alert>
+            ) : hasApplied ? (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertTitle>Application Submitted</AlertTitle>
+                <AlertDescription>
+                  You have already applied for this position. Check the "Applied Jobs" tab for status updates.
+                </AlertDescription>
+              </Alert>
+            ) : !user ? (
+              <Button className="w-full" onClick={login}>
+                Login to Apply
+              </Button>
+            ) : profileCompletion < 100 ? (
+              <div className="space-y-4">
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Profile Incomplete ({profileCompletion}%)</AlertTitle>
+                  <AlertDescription>
+                    Complete your profile to apply for this position
+                  </AlertDescription>
+                </Alert>
+                <Link href="/dashboard/profile">
+                  <Button variant="outline" className="w-full">
+                    Complete Profile
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="flex justify-end gap-4">
+                <Button variant="outline" onClick={onClose}>
+                  Close
+                </Button>
+                <Button onClick={handleApply} disabled={isSubmitting}>
+                  {isSubmitting ? 'Submitting...' : 'Apply Now'}
+                </Button>
+              </div>
             )}
           </div>
         </div>
