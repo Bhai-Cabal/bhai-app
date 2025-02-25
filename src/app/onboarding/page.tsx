@@ -26,6 +26,7 @@ const OnboardingPage: React.FC = () => {
   const [isFormValid, setIsFormValid] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('');
   const [isFormComplete, setIsFormComplete] = useState(false);
+  const [emailLinked, setEmailLinked] = useState(false);
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(formSchema),
@@ -104,12 +105,16 @@ const OnboardingPage: React.FC = () => {
     event.preventDefault();
     const isValid = await form.trigger();
     
-    if (!isValid || !isFormComplete) {
+    if (!isValid || !isFormComplete || (isWalletLogin && !emailLinked)) {
       // Show validation errors
       const errors = form.formState.errors;
       if (Object.keys(errors).length > 0) {
         console.log("Form errors:", errors);
         setError("Please fill in all required fields correctly.");
+        return;
+      }
+      if (isWalletLogin && !emailLinked) {
+        setError("Please link your email address to continue.");
         return;
       }
     }
@@ -177,7 +182,7 @@ const OnboardingPage: React.FC = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [form, isUsernameTaken]);
+  }, [form, isUsernameTaken, emailLinked]);
 
   // Form validation function
   const validateForm = async () => {
@@ -191,7 +196,7 @@ const OnboardingPage: React.FC = () => {
       values.location &&
       !isUsernameTaken &&
       isValid &&
-      (!isWalletLogin || (isWalletLogin && values.email)) // Only require email for wallet login
+      (!isWalletLogin || (isWalletLogin && emailLinked)) // Only require email to be linked for wallet login
     );
 
     setIsFormComplete(isComplete);
@@ -228,13 +233,6 @@ const OnboardingPage: React.FC = () => {
           Logout
         </Button>
         <Card className="p-8">
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
           <div className="mb-6">
             <h1 className="text-2xl font-bold mb-2">Welcome! Let's get started</h1>
             <p className="text-muted-foreground">
@@ -272,10 +270,16 @@ const OnboardingPage: React.FC = () => {
                   )}
                 </Button>
                 {!isFormComplete && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground text-center mt-4">
                     {form.formState.errors.root?.message || 
                      "Please fill in all required fields correctly to continue"}
                   </p>
+                )}
+                {error && (
+                  <Alert variant="destructive" className="mt-4 w-full max-w-sm">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
                 )}
                 {/* Show field-specific errors */}
                 {/* <div className="space-y-2 w-full">

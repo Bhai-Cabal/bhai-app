@@ -1,10 +1,12 @@
 // components/Step1.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FormItem, FormLabel, FormDescription, FormControl, FormMessage } from '@/components/ui/form';
 import { LocationInput } from '@/components/LocationInput';
+import { usePrivy } from '@privy-io/react-auth';
+import { Button } from '@/components/ui/button';
 
 interface Step1Props {
   isUsernameTaken: boolean;
@@ -20,6 +22,10 @@ interface Step1Props {
 
 const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, handleImageChange, imagePreview, userEmail, isWalletLogin, selectedLocation, setSelectedLocation, isFormComplete }) => {
   const { control, formState: { errors }, trigger } = useFormContext();
+  const { linkEmail } = usePrivy();
+  const [emailLinked, setEmailLinked] = useState(false);
+  const [linkingEmail, setLinkingEmail] = useState(false);
+  const [linkEmailError, setLinkEmailError] = useState<string | null>(null);
 
   const getLocationDisplayName = (locationString: string) => {
     try {
@@ -33,6 +39,19 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
   // Add onBlur handler to validate fields when user leaves input
   const handleBlur = async (fieldName: string) => {
     await trigger(fieldName);
+  };
+
+  const handleLinkEmail = async () => {
+    setLinkingEmail(true);
+    setLinkEmailError(null);
+    try {
+      await linkEmail();
+      setEmailLinked(true);
+    } catch (error) {
+      setLinkEmailError('Failed to link email. Please try again.');
+    } finally {
+      setLinkingEmail(false);
+    }
   };
 
   return (
@@ -138,30 +157,20 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
       />
 
       {isWalletLogin ? (
-        <Controller
-          name="email"
-          control={control}
-          rules={{ required: "Email is required for wallet login" }}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormDescription>
-                Please provide an email address for your account
-              </FormDescription>
-              <FormControl>
-                <Input
-                  placeholder="example@example.com"
-                  {...field}
-                  className="text-lg p-6"
-                  type="email"
-                  required
-                  onBlur={() => handleBlur('email')}
-                />
-              </FormControl>
-              <FormMessage>{errors.email?.message?.toString()}</FormMessage>
-            </FormItem>
-          )}
-        />
+        <FormItem>
+          <FormLabel>Email</FormLabel>
+          <FormDescription>
+            Please link an email address to your wallet
+          </FormDescription>
+          <FormControl>
+            <div className="flex flex-col items-center space-y-2">
+              <Button onClick={handleLinkEmail} disabled={linkingEmail || emailLinked} className="text-lg p-4 w-full max-w-xs">
+                {linkingEmail ? 'Linking...' : emailLinked ? 'Email Linked' : 'Link Email'}
+              </Button>
+              {linkEmailError && <p className="text-red-500 text-sm">{linkEmailError}</p>}
+            </div>
+          </FormControl>
+        </FormItem>
       ) : userEmail ? (
         <FormItem>
           <FormLabel>Email</FormLabel>
