@@ -27,6 +27,11 @@ const OnboardingPage: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [isFormComplete, setIsFormComplete] = useState(false);
   const [emailLinked, setEmailLinked] = useState(false);
+  
+  // Add this function to handle email linking status
+  const handleEmailLinkingStatus = (status: boolean) => {
+    setEmailLinked(status);
+  };
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(formSchema),
@@ -252,6 +257,8 @@ const OnboardingPage: React.FC = () => {
                 selectedLocation={selectedLocation}
                 setSelectedLocation={setSelectedLocation}
                 isFormComplete={isFormComplete}
+                emailLinked={emailLinked}
+                onEmailLinkingChange={handleEmailLinkingStatus}
               />
 
               <div className="flex flex-col gap-4 items-center mt-8">

@@ -1,5 +1,5 @@
 // components/Step1.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,12 +18,13 @@ interface Step1Props {
   selectedLocation: string;
   setSelectedLocation: React.Dispatch<React.SetStateAction<string>>;
   isFormComplete: boolean;
+  emailLinked: boolean;
+  onEmailLinkingChange: (status: boolean) => void;
 }
 
-const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, handleImageChange, imagePreview, userEmail, isWalletLogin, selectedLocation, setSelectedLocation, isFormComplete }) => {
+const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, handleImageChange, imagePreview, userEmail, isWalletLogin, selectedLocation, setSelectedLocation, isFormComplete, emailLinked, onEmailLinkingChange }) => {
   const { control, formState: { errors }, trigger } = useFormContext();
   const { linkEmail } = usePrivy();
-  const [emailLinked, setEmailLinked] = useState(false);
   const [linkingEmail, setLinkingEmail] = useState(false);
   const [linkEmailError, setLinkEmailError] = useState<string | null>(null);
 
@@ -45,14 +46,23 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
     setLinkingEmail(true);
     setLinkEmailError(null);
     try {
-      await linkEmail();
-      setEmailLinked(true);
+      const result = await linkEmail();
+      // Only set email as linked if the process completes successfully
+      if (result) {
+        onEmailLinkingChange(true);
+      }
     } catch (error) {
       setLinkEmailError('Failed to link email. Please try again.');
+      onEmailLinkingChange(false);
     } finally {
       setLinkingEmail(false);
     }
   };
+
+  useEffect(() => {
+    // Revalidate the form when the selectedLocation changes
+    trigger();
+  }, [selectedLocation, trigger]);
 
   return (
     <div className="space-y-6">
@@ -156,22 +166,60 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         )}
       />
 
-      {isWalletLogin ? (
+      {isWalletLogin && (
         <FormItem>
           <FormLabel>Email</FormLabel>
           <FormDescription>
-            Please link an email address to your wallet
+            {emailLinked 
+              ? "Email successfully linked!"
+              : "Link an email address to secure your account and receive important updates"}
           </FormDescription>
           <FormControl>
-            <div className="flex flex-col items-center space-y-2">
-              <Button onClick={handleLinkEmail} disabled={linkingEmail || emailLinked} className="text-lg p-4 w-full max-w-xs">
-                {linkingEmail ? 'Linking...' : emailLinked ? 'Email Linked' : 'Link Email'}
-              </Button>
-              {linkEmailError && <p className="text-red-500 text-sm">{linkEmailError}</p>}
+            <div className="flex flex-col space-y-2">
+              {emailLinked ? (
+                <div className="flex items-center space-x-2 text-green-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Email successfully linked</span>
+                </div>
+              ) : (
+                <Button 
+                  onClick={handleLinkEmail}
+                  disabled={linkingEmail}
+                  variant="outline"
+                  className="w-[200px] h-[40px] text-sm font-medium transition-all duration-200 hover:bg-primary hover:text-primary-foreground"
+                >
+                  {linkingEmail ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                      <span>Linking...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                      </svg>
+                      <span>Link Email Address</span>
+                    </div>
+                  )}
+                </Button>
+              )}
+              {linkEmailError && (
+                <div className="flex items-center space-x-2 text-destructive text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span>{linkEmailError}</span>
+                </div>
+              )}
             </div>
           </FormControl>
         </FormItem>
-      ) : userEmail ? (
+      )}
+
+      {userEmail && !isWalletLogin && (
         <FormItem>
           <FormLabel>Email</FormLabel>
           <FormDescription>Your account email address</FormDescription>
@@ -183,7 +231,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
             />
           </FormControl>
         </FormItem>
-      ) : null}
+      )}
 
       <Controller
         name="profilePicture"
