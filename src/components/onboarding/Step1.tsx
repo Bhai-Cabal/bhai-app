@@ -46,9 +46,8 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
     setLinkingEmail(true);
     setLinkEmailError(null);
     try {
-      const result = await linkEmail();
-      // Only set email as linked if the process completes successfully
-      if (result) {
+      await linkEmail();
+      // Set email as linked after the process completes successfully
         onEmailLinkingChange(true);
       }
     } catch (error) {
