@@ -42,14 +42,23 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
     await trigger(fieldName);
   };
 
+  useEffect(() => {
+    // Set initial email linking state to false
+    if (isWalletLogin && !userEmail) {
+      onEmailLinkingChange(false);
+    }
+  }, [isWalletLogin, userEmail, onEmailLinkingChange]);
+
   const handleLinkEmail = async () => {
     setLinkingEmail(true);
     setLinkEmailError(null);
     try {
+      // Keep email as unlinked before starting the process
+      onEmailLinkingChange(false);
       await linkEmail();
-      // Set email as linked after the process completes successfully
-        onEmailLinkingChange(true);
-      }
+      // Note: Don't set email as linked here
+      // The parent component should handle the email linked state
+      // only after the email is verified and stored in form data
     } catch (error) {
       setLinkEmailError('Failed to link email. Please try again.');
       onEmailLinkingChange(false);
@@ -183,27 +192,32 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
                   <span>Email successfully linked</span>
                 </div>
               ) : (
-                <Button 
-                  onClick={handleLinkEmail}
-                  disabled={linkingEmail}
-                  variant="outline"
-                  className="w-[200px] h-[40px] text-sm font-medium transition-all duration-200 hover:bg-primary hover:text-primary-foreground"
-                >
-                  {linkingEmail ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                      <span>Linking...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                      </svg>
-                      <span>Link Email Address</span>
-                    </div>
-                  )}
-                </Button>
+                <>
+                  <Button 
+                    onClick={handleLinkEmail}
+                    disabled={linkingEmail}
+                    variant="outline"
+                    className="w-[200px] h-[40px] text-sm font-medium transition-all duration-200 hover:bg-primary hover:text-primary-foreground"
+                  >
+                    {linkingEmail ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                        <span>Linking...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                          <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                        </svg>
+                        <span>Link Email Address</span>
+                      </div>
+                    )}
+                  </Button>
+                  <div className="text-sm text-muted-foreground">
+                    Email not yet linked. Please complete the email linking process.
+                  </div>
+                </>
               )}
               {linkEmailError && (
                 <div className="flex items-center space-x-2 text-destructive text-sm">
