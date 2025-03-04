@@ -305,37 +305,45 @@ export default function ProfilePage() {
 
       switch (section) {
         case 'username':
-          // Get the file from the form
-          const file = values.profilePicture;
-          let fileName = null;
-
           // Handle profile picture if it exists
-          if (file) {
-            // Get the user's current profile picture path
-            const { data: userData } = await supabase
-              .from("users")
-              .select("profile_picture_path")
-              .eq("auth_id", user.id)
-              .single();
+          const file = values.profilePicture;
+          let imagePath = null;
 
-            // Delete existing profile picture if it exists
-            if (userData?.profile_picture_path) {
-              await supabase
-                .storage
-                .from("profile-pictures")
-                .remove([userData.profile_picture_path]);
-            }
-
-            // Upload new profile picture
+          if (file && dbUserId) {
+            // Define the fixed path for user's profile picture using database ID
             const fileExt = file.name.split('.').pop();
-            fileName = `${user.id}-${Date.now()}.${fileExt}`;
+            const fixedPath = `public/${dbUserId}/profile.${fileExt}`;
 
-            const { error: uploadError } = await supabase
-              .storage
-              .from("profile-pictures")
-              .upload(fileName, file);
+            try {
+              // Delete existing file in the user's directory if it exists
+              const { data: existingFiles } = await supabase
+                .storage
+                .from('profile-pictures')
+                .list(`public/${dbUserId}`);
 
-            if (uploadError) throw uploadError;
+              if (existingFiles && existingFiles.length > 0) {
+                await supabase
+                  .storage
+                  .from('profile-pictures')
+                  .remove(existingFiles.map(f => `public/${dbUserId}/${f.name}`));
+              }
+
+              // Upload new file
+              const { error: uploadError } = await supabase
+                .storage
+                .from('profile-pictures')
+                .upload(fixedPath, file, {
+                  cacheControl: '3600',
+                  upsert: true
+                });
+
+              if (uploadError) throw uploadError;
+              imagePath = fixedPath;
+
+            } catch (error) {
+              console.error('Error handling profile picture:', error);
+              throw error;
+            }
           }
 
           // Update user profile including the new profile picture path if it exists
@@ -345,16 +353,16 @@ export default function ProfilePage() {
               username: values.username,
               full_name: values.fullName,
               bio: values.bio,
-              ...(fileName && { profile_picture_path: fileName })
+              ...(imagePath && { profile_picture_path: imagePath })
             })
             .eq("auth_id", user.id);
 
           // If profile picture was updated, get and set the new public URL
-          if (fileName) {
+          if (imagePath) {
             const { data: { publicUrl } } = supabase
               .storage
-              .from("profile-pictures")
-              .getPublicUrl(fileName);
+              .from('profile-pictures')
+              .getPublicUrl(imagePath);
 
             setImagePreview(publicUrl);
 
@@ -364,7 +372,6 @@ export default function ProfilePage() {
             });
             window.dispatchEvent(event);
           }
-
           break;
 
         case 'location':
@@ -711,10 +718,10 @@ export default function ProfilePage() {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
+    if (!file || !user?.id) return;
+  
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       toast({
@@ -724,7 +731,7 @@ export default function ProfilePage() {
       });
       return;
     }
-
+  
     // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type)) {
@@ -735,10 +742,10 @@ export default function ProfilePage() {
       });
       return;
     }
-
+  
     // Set the file in the form
     form.setValue('profilePicture', file);
-
+  
     // Show preview
     const reader = new FileReader();
     reader.onloadend = () => {

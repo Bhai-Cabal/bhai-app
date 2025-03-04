@@ -87,6 +87,10 @@ function GroupedMarker({ group, onClick, onHover, onLeave, zoom }: {
   const avatarSize = baseSize * sizeMultiplier;
   const secondaryAvatarSize = (avatarSize * 0.625); // 20px at base size
 
+  // Add slight random offset to prevent exact overlapping
+  const offsetX = (Math.random() - 0.5) * 0.001; // Small random offset
+  const offsetY = (Math.random() - 0.5) * 0.001;
+
   return (
     <div
       className="absolute cursor-pointer group"
@@ -94,7 +98,7 @@ function GroupedMarker({ group, onClick, onHover, onLeave, zoom }: {
       onMouseEnter={() => onHover(group.developers)}
       onMouseLeave={onLeave}
       style={{
-        transform: 'translate(-50%, -50%)',
+        transform: `translate(${offsetX}px, ${offsetY}px) translate(-50%, -50%)`,
         width: avatarSize,
         height: avatarSize
       }}
@@ -188,7 +192,7 @@ export default function NetworkGraph({ developers, onNodeClick, showResetButton 
   // Reset map function
   const resetMap = () => {
     setCenter([20, 0]);
-    setZoom(2);
+    setZoom(2.8);
   };
 
   return (
@@ -234,6 +238,32 @@ export default function NetworkGraph({ developers, onNodeClick, showResetButton 
         ))}
       </Map>
 
+      {/* Stats and Reset Controls */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col gap-4">
+        {showResetButton && (
+          <Button
+            onClick={resetMap}
+            variant="secondary" // Changed from secondary to default for better visibility
+            size="sm"
+            className="border-2 
+                       transition-all duration-200 
+                      flex items-center gap-2 px-4 py-2 rounded-xl"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+            <span>Reset Map</span>
+          </Button>
+        )}
+      </div>
+
+      {/* <div className="absolute bottom-4 left-4 z-10">
+        <div className="bg-white dark:bg-gray-800 shadow-xl border-2 p-3 rounded-xl">
+          <h3 className="text-sm font-medium mb-1">Global Network</h3>
+          <p className="text-xs text-muted-foreground">
+            {developers.length} members across {new Set(developers.map(d => d.location.country)).size} countries
+          </p>
+        </div>
+      </div> */}
+
       {/* Hover tooltip */}
       <AnimatePresence>
         {hoveredDevs && (
@@ -264,19 +294,6 @@ export default function NetworkGraph({ developers, onNodeClick, showResetButton 
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Reset button */}
-      {showResetButton && (
-        <Button
-          onClick={resetMap}
-          variant="outline"
-          size="icon"
-          className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm shadow-lg"
-          title="Reset map view"
-        >
-          <ArrowLeftRight className="h-4 w-4" />
-        </Button>
-      )}
     </div>
   );
 }

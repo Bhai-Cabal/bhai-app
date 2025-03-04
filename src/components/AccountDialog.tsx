@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { supabase } from "@/lib/supabase";
-import { Loader2, Plus, LogOut } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AccountDialogProps {
@@ -23,8 +23,8 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
     username: "",
     full_name: "",
     email: "",
-    phone: ""
   });
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -32,20 +32,57 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
     }
   }, [user?.id]);
 
-  const fetchProfile = async () => {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("auth_id", user?.id)
-      .single();
+  useEffect(() => {
+    // Add event listener for profile picture updates
+    const handleProfilePictureUpdate = (event: CustomEvent<{ url: string }>) => {
+      setProfilePictureUrl(event.detail.url);
+    };
 
-    if (!error && data) {
+    window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
+    };
+  }, []);
+
+  const fetchProfile = async () => {
+    if (!user?.id) return;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("username, full_name, profile_picture_path")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (error) throw error;
+
       setProfile({
         username: data.username,
         full_name: data.full_name,
         email: user?.email?.address || "",
-        phone: user?.phone?.number || ""
       });
+
+      if (data.profile_picture_path) {
+        const { data: imageUrl } = await supabase
+          .storage
+          .from("profile-pictures")
+          .getPublicUrl(data.profile_picture_path);
+
+        if (imageUrl) {
+          setProfilePictureUrl(imageUrl.publicUrl);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -69,7 +106,7 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
       toast({
         title: "Error",
         description: "Failed to update profile",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -86,8 +123,11 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
         <div className="space-y-6">
           <div className="flex items-center space-x-4">
             <Avatar className="h-16 w-16">
-              {/* <AvatarImage src={user?.avatarUrl || ""} /> */}
-              <AvatarFallback>{profile.full_name?.charAt(0)}</AvatarFallback>
+              {profilePictureUrl ? (
+                <AvatarImage src={profilePictureUrl} alt={profile.full_name} />
+              ) : (
+                <AvatarFallback>{profile.full_name?.charAt(0)}</AvatarFallback>
+              )}
             </Avatar>
             <div>
               <h3 className="font-medium">{profile.full_name}</h3>
@@ -132,27 +172,8 @@ export function AccountDialog({ open, onClose }: AccountDialogProps) {
             </div>
 
             <div>
-              <Label>Email addresses</Label>
-              <div className="flex items-center space-x-2">
-                <Input value={profile.email} disabled />
-                <span className="text-xs bg-secondary px-2 py-1 rounded">Primary</span>
-              </div>
-              <Button variant="ghost" size="sm" className="mt-2">
-                <Plus className="h-4 w-4 mr-2" />
-                Add email address
-              </Button>
-            </div>
-
-            <div>
-              <Label>Phone numbers</Label>
-              <div className="flex items-center space-x-2">
-                <Input value={profile.phone} disabled />
-                <span className="text-xs bg-secondary px-2 py-1 rounded">Primary</span>
-              </div>
-              <Button variant="ghost" size="sm" className="mt-2">
-                <Plus className="h-4 w-4 mr-2" />
-                Add phone number
-              </Button>
+              <Label>Email address</Label>
+              <Input value={profile.email} disabled />
             </div>
           </div>
 

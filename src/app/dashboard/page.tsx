@@ -283,18 +283,18 @@ export default function DashboardPage() {
       // 3. Fetch activities data (optional - could be done later)
       // This is mocked for now, but in a real app, you'd fetch this from the backend
       setActivities([
-        {
-          id: '1',
-          type: 'connection',
-          description: 'New connection request from Jane Doe',
-          timestamp: new Date().toLocaleString()
-        },
-        {
-          id: '2',
-          type: 'message',
-          description: 'Message received from Acme Corp',
-          timestamp: new Date(Date.now() - 86400000).toLocaleString()
-        }
+        // {
+        //   id: '1',
+        //   type: 'connection',
+        //   description: 'New connection request from Jane Doe',
+        //   timestamp: new Date().toLocaleString()
+        // },
+        // {
+        //   id: '2',
+        //   type: 'message',
+        //   description: 'Message received from Acme Corp',
+        //   timestamp: new Date(Date.now() - 86400000).toLocaleString()
+        // }
       ]);
 
       // 4. Fetch trend data (optional - could be done later)
@@ -408,7 +408,7 @@ export default function DashboardPage() {
 
           <TabsContent value="map" className="flex-1 h-[calc(100vh-10rem)] overflow-hidden rounded-xl border bg-card">
             <div className="h-full relative">
-              <div className="absolute bottom-4 left-4 z-10 bg-background/50 backdrop-blur-sm p-3 rounded-lg border">
+<div className="absolute bottom-4 left-4 z-10 bg-background/50 backdrop-blur-sm p-3 rounded-lg border">
                 <h3 className="text-sm font-medium mb-1">Global Network</h3>
                 <p className="text-xs text-muted-foreground">
                   {developers.length} members across {new Set(developers.map(d => d.location.country)).size} countries
@@ -416,7 +416,7 @@ export default function DashboardPage() {
               </div>
               <Web3NetworkViz 
                 developers={developers}
-                showResetButton={true} // Add this prop
+                showResetButton={true}
               />
             </div>
           </TabsContent>

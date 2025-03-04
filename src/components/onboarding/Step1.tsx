@@ -23,7 +23,7 @@ interface Step1Props {
 }
 
 const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, handleImageChange, imagePreview, userEmail, isWalletLogin, selectedLocation, setSelectedLocation, isFormComplete, emailLinked, onEmailLinkingChange }) => {
-  const { control, formState: { errors }, trigger } = useFormContext();
+  const { control, formState: { errors }, trigger, getValues, setValue } = useFormContext();
   const { linkEmail } = usePrivy();
   const [linkingEmail, setLinkingEmail] = useState(false);
   const [linkEmailError, setLinkEmailError] = useState<string | null>(null);
@@ -52,13 +52,14 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
   const handleLinkEmail = async () => {
     setLinkingEmail(true);
     setLinkEmailError(null);
+    const currentLocation = getValues('location');
+    
     try {
-      // Keep email as unlinked before starting the process
-      onEmailLinkingChange(false);
       await linkEmail();
-      // Note: Don't set email as linked here
-      // The parent component should handle the email linked state
-      // only after the email is verified and stored in form data
+      // Don't change email linking state here - let the parent component handle it
+      // Ensure location value persists
+      setValue('location', currentLocation);
+      setSelectedLocation(currentLocation);
     } catch (error) {
       setLinkEmailError('Failed to link email. Please try again.');
       onEmailLinkingChange(false);
@@ -67,10 +68,59 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
     }
   };
 
+  // Add effect to update email linking state when userEmail changes
   useEffect(() => {
-    // Revalidate the form when the selectedLocation changes
-    trigger();
-  }, [selectedLocation, trigger]);
+    if (userEmail) {
+      onEmailLinkingChange(true);
+    }
+  }, [userEmail, onEmailLinkingChange]);
+
+  // Modify the email section render logic
+  const renderEmailSection = () => {
+    if (!isWalletLogin || userEmail) {
+      return (
+        <FormItem>
+          <FormLabel>Email</FormLabel>
+          <FormDescription>Your account email address</FormDescription>
+          <FormControl>
+            <Input
+              value={userEmail || ''}
+              className="text-lg p-6 bg-muted"
+              disabled
+            />
+          </FormControl>
+        </FormItem>
+      );
+    }
+
+    if (!emailLinked) {
+      return (
+        <FormItem>
+          <FormLabel>Email</FormLabel>
+          <FormDescription>
+            Link an email address to secure your account and receive important updates
+          </FormDescription>
+          <FormControl>
+            <div className="flex flex-col space-y-2">
+              <Button 
+                onClick={handleLinkEmail}
+                disabled={linkingEmail}
+                variant="outline"
+                className="w-[200px] h-[40px] text-sm font-medium"
+              >
+                {linkingEmail ? "Linking..." : "Link Email Address"}
+              </Button>
+              {linkEmailError && (
+                <div className="text-destructive text-sm">{linkEmailError}</div>
+              )}
+            </div>
+          </FormControl>
+        </FormItem>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -174,77 +224,7 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         )}
       />
 
-      {isWalletLogin && (
-        <FormItem>
-          <FormLabel>Email</FormLabel>
-          <FormDescription>
-            {emailLinked 
-              ? "Email successfully linked!"
-              : "Link an email address to secure your account and receive important updates"}
-          </FormDescription>
-          <FormControl>
-            <div className="flex flex-col space-y-2">
-              {emailLinked ? (
-                <div className="flex items-center space-x-2 text-green-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span>Email successfully linked</span>
-                </div>
-              ) : (
-                <>
-                  <Button 
-                    onClick={handleLinkEmail}
-                    disabled={linkingEmail}
-                    variant="outline"
-                    className="w-[200px] h-[40px] text-sm font-medium transition-all duration-200 hover:bg-primary hover:text-primary-foreground"
-                  >
-                    {linkingEmail ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                        <span>Linking...</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                          <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                        </svg>
-                        <span>Link Email Address</span>
-                      </div>
-                    )}
-                  </Button>
-                  <div className="text-sm text-muted-foreground">
-                    Email not yet linked. Please complete the email linking process.
-                  </div>
-                </>
-              )}
-              {linkEmailError && (
-                <div className="flex items-center space-x-2 text-destructive text-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <span>{linkEmailError}</span>
-                </div>
-              )}
-            </div>
-          </FormControl>
-        </FormItem>
-      )}
-
-      {userEmail && !isWalletLogin && (
-        <FormItem>
-          <FormLabel>Email</FormLabel>
-          <FormDescription>Your account email address</FormDescription>
-          <FormControl>
-            <Input
-              value={userEmail}
-              className="text-lg p-6 bg-muted"
-              disabled
-            />
-          </FormControl>
-        </FormItem>
-      )}
+      {renderEmailSection()}
 
       <Controller
         name="profilePicture"

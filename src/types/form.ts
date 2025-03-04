@@ -46,8 +46,7 @@ export const formSchema = z.object({
     .min(3, "Username must be at least 3 characters")
     .max(50, "Username must be less than 50 characters"),
   fullName: z.string()
-    .min(2, "Full name must be at least 2 characters")
-    .max(100, "Full name must be less than 100 characters"),
+    .min(2, "Full name must be at least 2 characters"),  // Removed max length
   bio: z.string()
     .min(1, "Bio is required")
     .max(500, "Bio must be less than 500 characters"),

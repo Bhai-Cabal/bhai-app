@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AccountDialog } from "./AccountDialog";
 import { supabase } from "@/lib/supabase";
 import { AnimatePresence, motion } from "framer-motion";
@@ -47,17 +47,18 @@ const navItems = [
     href: "/dashboard/profile",
     icon: UserCircle,
   },
-  {
-    title: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
-  },
+  // {
+  //   title: "Settings",
+  //   href: "/dashboard/settings",
+  //   icon: Settings,
+  // },
 ];
 
 export function DashboardNav({ onCollapse, defaultCollapsed = false }: DashboardNavProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { user } = usePrivy();
 
@@ -108,16 +109,36 @@ export function DashboardNav({ onCollapse, defaultCollapsed = false }: Dashboard
     onCollapse?.(defaultCollapsed);
   }, []);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setIsCollapsed(true);
+        onCollapse?.(true);
+      }
+    }
+
+    if (!isCollapsed) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isCollapsed, onCollapse]);
+
   const handleCollapse = () => {
     setIsCollapsed(!isCollapsed);
     onCollapse?.(!isCollapsed);
   };
 
   return (
-    <div className={cn(
-      "border-r border-border/40 bg-card/80 backdrop-blur-md min-h-screen flex flex-col justify-between fixed h-screen transition-all duration-300 ease-in-out z-50",
-      isCollapsed ? "w-20" : "w-72"
-    )}>
+    <div 
+      ref={navRef}
+      className={cn(
+        "border-r border-border/40 bg-card/80 backdrop-blur-md min-h-screen flex flex-col justify-between fixed h-screen transition-all duration-300 ease-in-out z-50",
+        isCollapsed ? "w-20" : "w-72"
+      )}
+    >
       {/* Top section */}
       <div className="space-y-6 flex-1 p-6">
         {/* Logo and collapse button */}
@@ -130,7 +151,7 @@ export function DashboardNav({ onCollapse, defaultCollapsed = false }: Dashboard
                 exit={{ opacity: 0, x: -20 }}
                 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent"
               >
-                <Link href="/" className="">
+                <Link href="/" className=" text-nowrap">
                   Bhai Cabal
                 </Link>
               </motion.div>

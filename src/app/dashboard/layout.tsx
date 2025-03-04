@@ -44,7 +44,10 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background ">
-      <DashboardNav onCollapse={handleSidebarCollapse} defaultCollapsed={true} />
+      <DashboardNav 
+        onCollapse={handleSidebarCollapse} 
+        defaultCollapsed={true} 
+      />
       <div
         className={`transition-all duration-300 ease-in-out h-screen ${
           isSidebarCollapsed ? "ml-20" : "ml-72"
