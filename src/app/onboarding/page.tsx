@@ -27,6 +27,8 @@ const OnboardingPage: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [isFormComplete, setIsFormComplete] = useState(false);
   const [emailLinked, setEmailLinked] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   
   // Add this function to handle email linking status
   const handleEmailLinkingStatus = (status: boolean) => {
@@ -106,24 +108,49 @@ const OnboardingPage: React.FC = () => {
     }
   };
 
+  const validateForm = async () => {
+    const values = form.getValues();
+    const isValid = await form.trigger();
+
+    // Updated email validation logic
+    const hasValidEmail = isWalletLogin ? emailLinked : true; // Don't check email for non-wallet login
+    const hasValidLocation = !!selectedLocation;
+
+    const isComplete = !!(
+      values.username &&
+      values.fullName &&
+      values.bio &&
+      hasValidLocation &&
+      !isUsernameTaken &&
+      isValid &&
+      hasValidEmail
+    );
+
+    setIsFormComplete(isComplete);
+    return { isComplete, hasValidEmail, hasValidLocation };
+  };
+
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const isValid = await form.trigger();
+    setAttemptedSubmit(true);
     
-    if (!isValid || !isFormComplete || (isWalletLogin && !emailLinked)) {
-      // Show validation errors
-      const errors = form.formState.errors;
-      if (Object.keys(errors).length > 0) {
-        console.log("Form errors:", errors);
-        setError("Please fill in all required fields correctly.");
-        return;
+    const { isComplete, hasValidEmail, hasValidLocation } = await validateForm();
+    
+    if (!isComplete) {
+      if (!hasValidEmail && !emailLinked) {
+        setNote("Please ensure your email is connected to continue");
+        setError(null);
+      } else if (!hasValidLocation) {
+        setError("Please select a location to continue");
+        setNote(null);
+      } else {
+        setError("Please fill in all required fields correctly");
+        setNote(null);
       }
-      if (isWalletLogin && !emailLinked) {
-        setError("Please link your email address to continue.");
-        return;
-      }
+      return;
     }
 
+    setNote(null);
     setIsLoading(true);
     setError(null);
 
@@ -189,24 +216,6 @@ const OnboardingPage: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [form, isUsernameTaken, emailLinked]);
 
-  // Form validation function
-  const validateForm = async () => {
-    const values = form.getValues();
-    const isValid = await form.trigger(); // Trigger validation for all fields
-
-    const isComplete = !!(
-      values.username &&
-      values.fullName &&
-      values.bio &&
-      values.location &&
-      !isUsernameTaken &&
-      isValid &&
-      (!isWalletLogin || (isWalletLogin && emailLinked)) // Only require email to be linked for wallet login
-    );
-
-    setIsFormComplete(isComplete);
-  };
-
   // Update location in form when selectedLocation changes
   useEffect(() => {
     if (selectedLocation) {
@@ -214,9 +223,11 @@ const OnboardingPage: React.FC = () => {
         shouldValidate: true,
         shouldDirty: true,
       });
+    }
+    if (attemptedSubmit) {
       validateForm();
     }
-  }, [selectedLocation]);
+  }, [selectedLocation, attemptedSubmit]);
 
   useEffect(() => {
     // Set email in form if user logged in with email
@@ -227,6 +238,16 @@ const OnboardingPage: React.FC = () => {
       });
     }
   }, [userEmail, isWalletLogin]);
+
+  useEffect(() => {
+    if (emailLinked && isWalletLogin) {
+      setNote(null);
+      setError(null);
+    }
+    if (attemptedSubmit) {
+      validateForm();
+    }
+  }, [emailLinked, isWalletLogin, attemptedSubmit]);
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -276,10 +297,9 @@ const OnboardingPage: React.FC = () => {
                     'Complete & Continue to Profile'
                   )}
                 </Button>
-                {!isFormComplete && (
-                  <p className="text-sm text-muted-foreground text-center mt-4">
-                    {form.formState.errors.root?.message || 
-                     "Please fill in all required fields correctly to continue"}
+                {note && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    {note}
                   </p>
                 )}
                 {error && (
@@ -288,14 +308,6 @@ const OnboardingPage: React.FC = () => {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                {/* Show field-specific errors */}
-                {/* <div className="space-y-2 w-full">
-                  {Object.keys(form.formState.errors).map((field) => (
-                    <p key={field} className="text-sm text-destructive">
-                      {String(form.formState.errors[field as keyof OnboardingFormValues]?.message)}
-                    </p>
-                  ))}
-                </div> */}
               </div>
             </form>
           </FormProvider>
