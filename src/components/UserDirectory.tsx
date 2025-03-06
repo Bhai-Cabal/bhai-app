@@ -488,7 +488,7 @@ export function UserDirectory() {
                         {user.digital_identities.map((identity, index) => (
                           <a
                             key={index}
-                            href={`https://${identity.platform.toLowerCase()}.com/${identity.identifier}`}
+                            href={`${identity.identifier}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 text-sm hover:text-primary transition-colors overflow-hidden"
