@@ -7,6 +7,7 @@ import { FormItem, FormLabel, FormDescription, FormControl, FormMessage } from '
 import { LocationInput } from '@/components/LocationInput';
 import { usePrivy } from '@privy-io/react-auth';
 import { Button } from '@/components/ui/button';
+import { AlertCircle } from 'lucide-react';
 
 interface Step1Props {
   isUsernameTaken: boolean;
@@ -52,14 +53,15 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
   const handleLinkEmail = async () => {
     setLinkingEmail(true);
     setLinkEmailError(null);
-    const currentLocation = getValues('location');
+    const currentLocation = selectedLocation; // Use prop instead of form value
     
     try {
       await linkEmail();
-      // Don't change email linking state here - let the parent component handle it
-      // Ensure location value persists
-      setValue('location', currentLocation);
-      setSelectedLocation(currentLocation);
+      // Ensure location persists
+      if (currentLocation) {
+        setValue('location', currentLocation);
+        setSelectedLocation(currentLocation);
+      }
     } catch (error) {
       setLinkEmailError('Failed to link email. Please try again.');
       onEmailLinkingChange(false);
@@ -123,31 +125,36 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Controller
         name="username"
         control={control}
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Username</FormLabel>
-            <FormDescription>
-              Choose a unique username that will identify you on the platform (minimum 3 characters)
+            <FormLabel className="text-base sm:text-lg font-medium">Username</FormLabel>
+            <FormDescription className="text-sm text-muted-foreground mb-2">
+              Choose a unique username that will identify you on the platform
             </FormDescription>
             <FormControl>
               <Input
                 placeholder="satoshi"
                 {...field}
-                className={`text-lg p-6 ${errors.username ? 'border-destructive' : ''}`}
+                className={`text-base sm:text-lg p-6 rounded-xl transition-colors
+                  ${errors.username ? 'border-destructive' : 'hover:border-primary focus:border-primary'}`}
                 minLength={3}
                 maxLength={50}
                 onChange={handleUsernameChange}
                 value={field.value || ''}
                 required
-                onBlur={() => handleBlur('username')}
               />
             </FormControl>
-            {isUsernameTaken && <p className="text-red-500">Username is already taken</p>}
-            <FormMessage>{typeof errors.username?.message === 'string' ? errors.username?.message : null}</FormMessage>
+            {isUsernameTaken && (
+              <p className="text-destructive text-sm mt-2 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Username is already taken
+              </p>
+            )}
+            <FormMessage />
           </FormItem>
         )}
       />
@@ -157,15 +164,15 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         control={control}
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Full Name</FormLabel>
-            <FormDescription>
+            <FormLabel className="text-base sm:text-lg">Full Name</FormLabel>
+            <FormDescription className="text-sm sm:text-base">
               Enter your full name as you'd like it to appear on your profile
             </FormDescription>
             <FormControl>
               <Input
                 placeholder="Satoshi Nakamoto"
                 {...field}
-                className="text-lg p-6"
+                className="text-base sm:text-lg p-4 sm:p-6"
                 maxLength={100}
                 value={field.value || ''}
                 required
@@ -182,14 +189,14 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         control={control}
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Bio</FormLabel>
-            <FormDescription>
+            <FormLabel className="text-base sm:text-lg">Bio</FormLabel>
+            <FormDescription className="text-sm sm:text-base">
               Tell us about yourself (maximum 500 characters)
             </FormDescription>
             <FormControl>
               <Textarea
                 placeholder="Share a brief introduction about yourself..."
-                className="min-h-[100px] text-lg p-6"
+                className="min-h-[100px] text-base sm:text-lg p-4 sm:p-6"
                 maxLength={500}
                 {...field}
                 value={field.value || ''}
@@ -208,8 +215,8 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         rules={{ required: "Location is required" }}
         render={({ field }) => (
           <FormItem className="flex flex-col">
-            <FormLabel>Location</FormLabel>
-            <FormDescription>
+            <FormLabel className="text-base sm:text-lg">Location</FormLabel>
+            <FormDescription className="text-sm sm:text-base">
               Start typing to get location suggestions
             </FormDescription>
             <FormControl>
@@ -231,24 +238,27 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         control={control}
         render={({ field: { value, onChange, ...field } }) => (
           <FormItem>
-            <FormLabel>Profile Picture</FormLabel>
-            <FormDescription>
+            <FormLabel className="text-base sm:text-lg font-medium">Profile Picture</FormLabel>
+            <FormDescription className="text-sm mb-2">
               Upload a profile picture (max 5MB, .jpg, .png, .webp)
             </FormDescription>
             <FormControl>
               <div className="space-y-4">
-                <Input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleImageChange}
-                  className="text-lg p-6"
-                  {...field}
-                />
-                {imagePreview && (
-                  <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-primary">
-                    <img src={imagePreview} alt="Profile preview" className="object-cover" />
-                  </div>
-                )}
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  {imagePreview && (
+                    <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-primary">
+                      <img src={imagePreview} alt="Profile preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <Input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleImageChange}
+                    className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 
+                      file:text-sm file:font-semibold hover:file:bg-primary/80 cursor-pointer"
+                    {...field}
+                  />
+                </div>
               </div>
             </FormControl>
             <FormMessage />

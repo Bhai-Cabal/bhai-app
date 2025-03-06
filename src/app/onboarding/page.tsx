@@ -15,6 +15,7 @@ import { v4 as uuid } from 'uuid';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { debounce } from 'lodash';
+import { Header } from '@/components/layout/Header';
 
 const OnboardingPage: React.FC = () => {
   const router = useRouter();
@@ -27,8 +28,6 @@ const OnboardingPage: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [isFormComplete, setIsFormComplete] = useState(false);
   const [emailLinked, setEmailLinked] = useState(false);
-  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
   
   // Add this function to handle email linking status
   const handleEmailLinkingStatus = (status: boolean) => {
@@ -108,49 +107,28 @@ const OnboardingPage: React.FC = () => {
     }
   };
 
-  const validateForm = async () => {
-    const values = form.getValues();
-    const isValid = await form.trigger();
-
-    // Updated email validation logic
-    const hasValidEmail = isWalletLogin ? emailLinked : true; // Don't check email for non-wallet login
-    const hasValidLocation = !!selectedLocation;
-
-    const isComplete = !!(
-      values.username &&
-      values.fullName &&
-      values.bio &&
-      hasValidLocation &&
-      !isUsernameTaken &&
-      isValid &&
-      hasValidEmail
-    );
-
-    setIsFormComplete(isComplete);
-    return { isComplete, hasValidEmail, hasValidLocation };
-  };
-
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setAttemptedSubmit(true);
+    const isValid = await form.trigger();
     
-    const { isComplete, hasValidEmail, hasValidLocation } = await validateForm();
-    
-    if (!isComplete) {
-      if (!hasValidEmail && !emailLinked) {
-        setNote("Please ensure your email is connected to continue");
-        setError(null);
-      } else if (!hasValidLocation) {
-        setError("Please select a location to continue");
-        setNote(null);
-      } else {
-        setError("Please fill in all required fields correctly");
-        setNote(null);
+    if (!isValid || !isFormComplete) {
+      const errors = form.formState.errors;
+      if (Object.keys(errors).length > 0) {
+        setError("Please fill in all required fields correctly.");
+        return;
       }
-      return;
+      // Separate check for email linking
+      if (isWalletLogin && !emailLinked) {
+        setError("Please link your email address to continue.");
+        return;
+      }
+      // Check location separately
+      if (!selectedLocation) {
+        setError("Please select a location.");
+        return;
+      }
     }
 
-    setNote(null);
     setIsLoading(true);
     setError(null);
 
@@ -216,6 +194,24 @@ const OnboardingPage: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [form, isUsernameTaken, emailLinked]);
 
+  // Form validation function
+  const validateForm = async () => {
+    const values = form.getValues();
+    const isValid = await form.trigger(); // Trigger validation for all fields
+
+    const isComplete = !!(
+      values.username &&
+      values.fullName &&
+      values.bio &&
+      selectedLocation && // Check selectedLocation instead of values.location
+      !isUsernameTaken &&
+      isValid &&
+      (!isWalletLogin || (isWalletLogin && emailLinked)) // Only require email to be linked for wallet login
+    );
+
+    setIsFormComplete(isComplete);
+  };
+
   // Update location in form when selectedLocation changes
   useEffect(() => {
     if (selectedLocation) {
@@ -224,10 +220,8 @@ const OnboardingPage: React.FC = () => {
         shouldDirty: true,
       });
     }
-    if (attemptedSubmit) {
-      validateForm();
-    }
-  }, [selectedLocation, attemptedSubmit]);
+    validateForm(); // Call validateForm after location update
+  }, [selectedLocation, emailLinked]); // Add emailLinked as dependency
 
   useEffect(() => {
     // Set email in form if user logged in with email
@@ -239,80 +233,71 @@ const OnboardingPage: React.FC = () => {
     }
   }, [userEmail, isWalletLogin]);
 
-  useEffect(() => {
-    if (emailLinked && isWalletLogin) {
-      setNote(null);
-      setError(null);
-    }
-    if (attemptedSubmit) {
-      validateForm();
-    }
-  }, [emailLinked, isWalletLogin, attemptedSubmit]);
-
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
-      <div className="fixed top-4 right-4 z-50">
-        <ThemeToggle />
-      </div>
-      <div className="max-w-2xl mx-auto">
-        <Button variant="outline" onClick={logout} className="absolute mt-4 ml-[36rem]">
-          Logout
-        </Button>
-        <Card className="p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold mb-2">Welcome! Let's get started</h1>
-            <p className="text-muted-foreground">
-              Fill in your basic details to create your profile. You can complete the rest later.
-            </p>
-          </div>
-          
-          <FormProvider {...form}>
-            <form onSubmit={handleFormSubmit} className="space-y-6">
-              <Step1
-                isUsernameTaken={isUsernameTaken}
-                handleUsernameChange={handleUsernameChange}
-                handleImageChange={handleImageChange}
-                imagePreview={imagePreview}
-                userEmail={userEmail}
-                isWalletLogin={!!isWalletLogin}
-                selectedLocation={selectedLocation}
-                setSelectedLocation={setSelectedLocation}
-                isFormComplete={isFormComplete}
-                emailLinked={emailLinked}
-                onEmailLinkingChange={handleEmailLinkingStatus}
-              />
+    <div className="min-h-screen bg-background">
+      <Header onLogout={logout} />
+      
+      <main className="pt-[72px] pb-8 px-4">
+        <div className="w-full max-w-2xl mx-auto">
+          <Card className="p-4 sm:p-8">
+            <div className="mb-6">
+              <h1 className="text-xl sm:text-2xl font-bold mb-2">Welcome! Let's get started</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Fill in your basic details to create your profile. You can complete the rest later.
+              </p>
+            </div>
+            
+            <FormProvider {...form}>
+              <form onSubmit={handleFormSubmit} className="space-y-6">
+                <Step1
+                  isUsernameTaken={isUsernameTaken}
+                  handleUsernameChange={handleUsernameChange}
+                  handleImageChange={handleImageChange}
+                  imagePreview={imagePreview}
+                  userEmail={userEmail}
+                  isWalletLogin={!!isWalletLogin}
+                  selectedLocation={selectedLocation}
+                  setSelectedLocation={setSelectedLocation}
+                  isFormComplete={isFormComplete}
+                  emailLinked={emailLinked}
+                  onEmailLinkingChange={handleEmailLinkingStatus}
+                />
 
-              <div className="flex flex-col gap-4 items-center mt-8">
-                <Button 
-                  type="submit" 
-                  disabled={isLoading || !isFormComplete}
-                  className={`w-full max-w-sm ${!isFormComplete ? 'cursor-not-allowed opacity-50' : 'hover:bg-primary-dark'}`}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Complete & Continue to Profile'
+                <div className="flex flex-col gap-3 items-center mt-8">
+                  <Button 
+                    type="submit" 
+                    disabled={isLoading || !isFormComplete}
+                    className={`w-full sm:max-w-sm text-sm sm:text-base py-5 rounded-xl transition-all
+                      ${!isFormComplete ? 'cursor-not-allowed opacity-50' : 'hover:scale-[1.02] hover:shadow-lg'}`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Complete & Continue to Profile'
+                    )}
+                  </Button>
+
+                  {!isFormComplete && (
+                    <p className="text-xs sm:text-sm text-muted-foreground text-center">
+                      Please fill in all required fields correctly to continue
+                    </p>
                   )}
-                </Button>
-                {note && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    {note}
-                  </p>
-                )}
-                {error && (
-                  <Alert variant="destructive" className="mt-4 w-full max-w-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </form>
-          </FormProvider>
-        </Card>
-      </div>
+
+                  {error && (
+                    <Alert variant="destructive" className="mt-2 w-full sm:max-w-sm">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-sm">{error}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              </form>
+            </FormProvider>
+          </Card>
+        </div>
+      </main>
     </div>
   );
 };

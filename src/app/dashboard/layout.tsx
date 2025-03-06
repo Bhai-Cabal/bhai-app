@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { supabase } from "@/lib/supabase";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { TopNav } from "@/components/layout/TopNav";
 
 export default function DashboardLayout({
   children,
@@ -43,14 +44,14 @@ export default function DashboardLayout({
   }, [user, router, authenticated]);
 
   return (
-    <div className="min-h-screen bg-background ">
-      <DashboardNav 
-        onCollapse={handleSidebarCollapse} 
-        defaultCollapsed={true} 
-      />
+    <div className="min-h-screen bg-background">
+      <TopNav className="md:hidden" /> {/* Mobile top navigation */}
+      <DashboardNav className="hidden md:block" /> {/* Desktop side navigation */}
       <div
-        className={`transition-all duration-300 ease-in-out h-screen ${
-          isSidebarCollapsed ? "ml-20" : "ml-72"
+        className={`transition-all duration-300 ease-in-out min-h-screen ${
+          isSidebarCollapsed 
+            ? "ml-0 md:ml-20" 
+            : "ml-0 md:ml-72"
         }`}
       >
         {children}
