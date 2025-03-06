@@ -258,7 +258,7 @@ const Step4: React.FC<Step4Props> = ({
                 <FormItem className="flex-1">
                   <FormControl>
                     <Input
-                      placeholder="Enter your profile link or identifier"
+                      placeholder="Enter your profile link"
                       {...field}
                       className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
                       onChange={async (e) => {
