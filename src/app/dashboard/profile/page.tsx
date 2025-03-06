@@ -947,251 +947,219 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 ">
-      {profileCompletion < 100 && (
-        <div className="mb-8">
-          <div className="bg-background rounded-lg p-6 border">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Profile Completion</h2>
-              <span className="text-2xl font-bold">{profileCompletion}%</span>
-            </div>
-            
-            {/* Progress bar */}
-            <div className="w-full bg-secondary rounded-full h-4 mb-4">
-              <div 
-                className="bg-primary h-4 rounded-full transition-all duration-500"
-                style={{ width: `${profileCompletion}%` }}
-              />
-            </div>
-
-            {/* Section completion status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <CompletionItem
-                title="Basic Info"
-                isComplete={!!form.getValues('username') && !!form.getValues('fullName')}
-                contribution={20}
-              />
-              <CompletionItem
-                title="Location & Birthday"
-                isComplete={!!form.getValues('location') && !!form.getValues('birthday')}
-                contribution={20}
-              />
-              <CompletionItem
-                title="Work Experience"
-                isComplete={(form.getValues('companies') ?? []).length > 0}
-                contribution={20}
-              />
-              <CompletionItem
-                title="Digital Presence"
-                isComplete={(form.getValues('digitalIdentities') ?? []).length > 0}
-                contribution={20}
-              />
-              <CompletionItem
-                title="Wallet Addresses"
-                isComplete={(form.getValues('walletAddresses') ?? []).length > 0}
-                contribution={20}
-              />
+    <div className="relative min-h-screen bg-background">
+      {/* Profile Completion Section - Now sticky at the top */}
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b">
+        {profileCompletion < 100 && (
+          <div className="max-w-4xl mx-auto p-4">
+            <div className="bg-card rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-lg font-semibold">Profile Completion</h2>
+                <span className="text-xl font-bold">{profileCompletion}%</span>
+              </div>
+              
+              {/* Progress bar */}
+              <div className="w-full bg-secondary rounded-full h-3">
+                <div 
+                  className="bg-primary h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${profileCompletion}%` }}
+                />
+              </div>
             </div>
           </div>
+        )}
+
+        {/* Section Navigation - Now part of the sticky header */}
+        <div className="border-t">
+          <div className="max-w-4xl mx-auto px-4 py-2">
+            <nav className="flex gap-2 overflow-x-auto no-scrollbar">
+              {['Basic Info', 'Location & Birthday', 'Work Experience', 'Digital Presence', 'Wallet Addresses'].map((section) => (
+                <a
+                  key={section}
+                  href={`#${section.toLowerCase().replace(/\s+/g, '-')}`}
+                  className="px-4 py-2 whitespace-nowrap rounded-full bg-accent/50 hover:bg-accent text-sm font-medium transition-colors"
+                >
+                  {section}
+                </a>
+              ))}
+            </nav>
+          </div>
         </div>
-      )}
+      </div>
 
-      <h1 className="text-3xl font-bold mb-8">Edit Profile</h1>
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">Edit Profile</h1>
 
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-12 w-12 animate-spin" />
-        </div>
-      ) : (
-        <FormProvider {...form}>
-          <form className="space-y-6">
-            <Card id="basic-info" className="p-6 space-y-4 scroll-mt-20">
-              <FormItem>
-                <FormLabel>Username</FormLabel>
-                <FormControl>
-                  <Controller
-                    name="username"
-                    control={form.control}
-                    render={({ field }) => <Input {...field} value={field.value || ""} />}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-
-              <FormItem>
-                <FormLabel>Full Name</FormLabel>
-                <FormControl>
-                  <Controller
-                    name="fullName"
-                    control={form.control}
-                    render={({ field }) => <Input {...field} value={field.value || ""} />}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-
-              <FormItem>
-                <FormLabel>Bio</FormLabel>
-                <FormControl>
-                  <Controller
-                    name="bio"
-                    control={form.control}
-                    render={({ field }) => (
-                      <Textarea
-                        placeholder="Tell us about yourself..."
-                        className="resize-none"
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    )}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-
-              <FormItem>
-                <FormLabel>Profile Picture</FormLabel>
-                <FormControl>
-                  <div className="space-y-4">
-                    <Input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleImageChange}
-                      className="text-lg p-6"
-                      disabled={isLoading}
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-12 w-12 animate-spin" />
+          </div>
+        ) : (
+          <FormProvider {...form}>
+            <form className="space-y-8">
+              {/* Form sections */}
+              <Card id="basic-info" className="p-6 space-y-4">
+                <h2 className="text-xl font-semibold mb-4">Basic Info</h2>
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Controller
+                      name="username"
+                      control={form.control}
+                      render={({ field }) => <Input {...field} value={field.value || ""} />}
                     />
-                    {imagePreview && (
-                      <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-primary">
-                        <img src={imagePreview} alt="Profile preview" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    {isLoading && (
-                      <div className="flex justify-center">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                      </div>
-                    )}
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-              <Button type="button" onClick={() => onSubmitSection('username')}>
-                Save Basic Info
-              </Button>
-            </Card>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
 
-            <Card id="location-birthday" className="p-6 scroll-mt-20">
-              <Step2
-                selectedLocation={selectedLocation || ""}
-                setSelectedLocation={setSelectedLocation}
-                getMaxDate={getMaxDate}
-                getMinDate={getMinDate}
-              />
-              <Button 
-                type="button" 
-                onClick={() => onSubmitSection('location')}
-                className="mt-4"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Location and Birthday'
-                )}
-              </Button>
-            </Card>
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Controller
+                      name="fullName"
+                      control={form.control}
+                      render={({ field }) => <Input {...field} value={field.value || ""} />}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
 
-            <Card id="work-experience" className="p-6 scroll-mt-20">
-              <Step3 
-                addCompany={addCompany} 
-                removeCompany={removeCompany} 
-              />
-              <Button 
-                type="button" 
-                onClick={() => onSubmitSection('companies')}
-                className="mt-4"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Work Experience'
-                )}
-              </Button>
-            </Card>
+                <FormItem>
+                  <FormLabel>Bio</FormLabel>
+                  <FormControl>
+                    <Controller
+                      name="bio"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Textarea
+                          placeholder="Tell us about yourself..."
+                          className="resize-none"
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      )}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
 
-            <Card id="digital-presence" className="p-6 scroll-mt-20">
-              <Step4
-                PLATFORMS={['Twitter', 'GitHub', 'LinkedIn', 'Discord', 'Telegram', 'Medium']}
-                roles={roles}
-                skills={skillsData}
-                newPlatform={newPlatform}
-                setNewPlatform={setNewPlatform}
-                handlePlatformChange={handlePlatformChange}
-                handleRoleChange={handleRoleChange}
-                handleSkillInputChange={handleSkillInputChange}
-                handleSkillSelect={handleSkillSelect}
-                removeIdentity={removeIdentity}
-                removeRole={removeRole}
-                removeSkill={removeSkill}
-                addIdentity={addIdentity}
-                addRole={addRole}
-                skillInput={skillInput}
-                skillSuggestions={skillSuggestions}
-                selectedSkills={selectedSkills}
-                identityWarning=""
-              />
-              <Button 
-                type="button" 
-                onClick={() => onSubmitSection('digitalIdentities')}
-                className="mt-4"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Digital Identities and Skills'
-                )}
-              </Button>
-            </Card>
+                <FormItem>
+                  <FormLabel>Profile Picture</FormLabel>
+                  <FormControl>
+                    <div className="space-y-4">
+                      <Input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleImageChange}
+                        className="text-lg p-6"
+                        disabled={isLoading}
+                      />
+                      {imagePreview && (
+                        <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-primary">
+                          <img src={imagePreview} alt="Profile preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      {isLoading && (
+                        <div className="flex justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+                <Button type="button" onClick={() => onSubmitSection('username')}>
+                  Save Basic Info
+                </Button>
+              </Card>
 
-            <Card id="wallet-addresses" className="p-6 scroll-mt-20">
-              <Step5
-                BLOCKCHAINS={['Ethereum', 'Polygon', 'Solana', 'Bitcoin', 'Arbitrum', 'Optimism']}
-                newBlockchain={newBlockchain}
-                setNewBlockchain={setNewBlockchain}
-                handleBlockchainChange={handleBlockchainChange}
-                removeWallet={removeWallet}
-                addWallet={addWallet}
-                walletWarning=""
-              />
-              <Button 
-                type="button" 
-                onClick={() => onSubmitSection('walletAddresses')}
-                className="mt-4"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Wallet Addresses'
-                )}
-              </Button>
-            </Card>
-          </form>
-        </FormProvider>
-      )}
+              <Card id="location-birthday" className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Location & Birthday</h2>
+                <Step2
+                  selectedLocation={selectedLocation || ""}
+                  setSelectedLocation={setSelectedLocation}
+                  getMaxDate={getMaxDate}
+                  getMinDate={getMinDate}
+                />
+                <Button 
+                  type="button" 
+                  onClick={() => onSubmitSection('location')}
+                  className="mt-6"
+                >
+                  Save Location and Birthday
+                </Button>
+              </Card>
+
+              <Card id="work-experience" className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Work Experience</h2>
+                <Step3 
+                  addCompany={addCompany} 
+                  removeCompany={removeCompany} 
+                />
+                <Button 
+                  type="button" 
+                  onClick={() => onSubmitSection('companies')}
+                  className="mt-6"
+                >
+                  Save Work Experience
+                </Button>
+              </Card>
+
+              <Card id="digital-presence" className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Digital Presence</h2>
+                <Step4
+                  PLATFORMS={['Twitter', 'GitHub', 'LinkedIn', 'Discord', 'Telegram', 'Medium']}
+                  roles={roles}
+                  skills={skillsData}
+                  newPlatform={newPlatform}
+                  setNewPlatform={setNewPlatform}
+                  handlePlatformChange={handlePlatformChange}
+                  handleRoleChange={handleRoleChange}
+                  handleSkillInputChange={handleSkillInputChange}
+                  handleSkillSelect={handleSkillSelect}
+                  removeIdentity={removeIdentity}
+                  removeRole={removeRole}
+                  removeSkill={removeSkill}
+                  addIdentity={addIdentity}
+                  addRole={addRole}
+                  skillInput={skillInput}
+                  skillSuggestions={skillSuggestions}
+                  selectedSkills={selectedSkills}
+                  identityWarning=""
+                />
+                <Button 
+                  type="button" 
+                  onClick={() => onSubmitSection('digitalIdentities')}
+                  className="mt-6"
+                >
+                  Save Digital Identities
+                </Button>
+              </Card>
+
+              <Card id="wallet-addresses" className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Wallet Addresses</h2>
+                <Step5
+                  BLOCKCHAINS={['Ethereum', 'Polygon', 'Solana', 'Bitcoin', 'Arbitrum', 'Optimism']}
+                  newBlockchain={newBlockchain}
+                  setNewBlockchain={setNewBlockchain}
+                  handleBlockchainChange={handleBlockchainChange}
+                  removeWallet={removeWallet}
+                  addWallet={addWallet}
+                  walletWarning=""
+                />
+                <Button 
+                  type="button" 
+                  onClick={() => onSubmitSection('walletAddresses')}
+                  className="mt-6"
+                >
+                  Save Wallet Addresses
+                </Button>
+              </Card>
+            </form>
+          </FormProvider>
+        )}
+      </div>
     </div>
   );
 }

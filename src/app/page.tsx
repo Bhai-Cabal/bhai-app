@@ -52,6 +52,26 @@ export default function LandingPage() {
     }
   }, [user?.id]);
 
+  // Add new useEffect for onboarding check
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (user?.id) {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id')
+          .eq('auth_id', user.id)
+          .single();
+
+        if (error || !data) {
+          // User hasn't completed onboarding
+          router.push('/onboarding');
+        }
+      }
+    };
+
+    checkOnboarding();
+  }, [user?.id, router]);
+
   const fetchDevelopers = async () => {
     try {
       const { data: users, error } = await supabase

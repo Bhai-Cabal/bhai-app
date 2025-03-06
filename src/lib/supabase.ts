@@ -33,3 +33,16 @@ export async function checkUserRegistered(userId: string, email: string): Promis
     return false;
   }
 }
+
+export const checkOnboardingStatus = async (userId: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .eq('auth_id', userId)
+    .single();
+
+  if (error || !data) {
+    return false;
+  }
+  return true;
+};
