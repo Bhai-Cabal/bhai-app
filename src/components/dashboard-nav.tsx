@@ -159,7 +159,7 @@ export function DashboardNav({ onCollapse, defaultCollapsed = false, className }
       <div 
         ref={navRef}
         className={cn(
-          "border-r border-border/40 bg-card/80 backdrop-blur-md min-h-screen flex flex-col justify-between fixed h-screen transition-all duration-300 ease-in-out z-50",
+          "relative border-r border-border/40 bg-card/80 backdrop-blur-md min-h-screen flex flex-col justify-between fixed h-screen transition-all duration-300 ease-in-out z-50",
           isCollapsed ? "w-20" : "w-72",
           className
         )}
@@ -235,7 +235,7 @@ export function DashboardNav({ onCollapse, defaultCollapsed = false, className }
         </div>
 
         {/* Bottom section - Fixed to bottom */}
-        <div className="sticky bottom-0 p-6 border-t bg-background/80 backdrop-blur-sm">
+        <div className="w-full absolute bottom-0 p-6 border-t bg-background/80 backdrop-blur-sm">
           <div className={cn(
             "flex gap-2 mb-4",
             isCollapsed ? "flex-col items-center" : "items-center"
