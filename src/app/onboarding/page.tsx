@@ -29,9 +29,10 @@ const OnboardingPage: React.FC = () => {
   const [isFormComplete, setIsFormComplete] = useState(false);
   const [emailLinked, setEmailLinked] = useState(false);
   
-  // Add this function to handle email linking status
+  // Modified handleEmailLinkingStatus
   const handleEmailLinkingStatus = (status: boolean) => {
     setEmailLinked(status);
+    // Don't trigger validateForm here, let the useEffect handle it
   };
 
   const form = useForm<OnboardingFormValues>({
@@ -78,7 +79,7 @@ const OnboardingPage: React.FC = () => {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -98,10 +99,12 @@ const OnboardingPage: React.FC = () => {
         return;
       }
 
-      form.setValue('profilePicture', file);
+      await form.setValue('profilePicture', file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
+        // Validate form after image is processed
+        form.trigger();
       };
       reader.readAsDataURL(file);
     }
@@ -186,33 +189,38 @@ const OnboardingPage: React.FC = () => {
   const userEmail = user?.email?.address ?? null;
   const isWalletLogin = !userEmail && user?.wallet; // Check if user has a wallet but no email
 
+  // Separate useEffect for form validation
   useEffect(() => {
-    const subscription = form.watch(() => {
-      validateForm();
-    });
+    const validateFormFields = async () => {
+      const values = form.getValues();
+      const isValid = await form.trigger();
 
-    return () => subscription.unsubscribe();
-  }, [form, isUsernameTaken, emailLinked]);
+      const isComplete = !!(
+        values.username &&
+        values.fullName &&
+        values.bio &&
+        selectedLocation &&
+        !isUsernameTaken &&
+        isValid &&
+        (!isWalletLogin || (isWalletLogin && emailLinked))
+      );
 
-  // Form validation function
-  const validateForm = async () => {
-    const values = form.getValues();
-    const isValid = await form.trigger(); // Trigger validation for all fields
+      if (isComplete !== isFormComplete) {
+        setIsFormComplete(isComplete);
+      }
+    };
 
-    const isComplete = !!(
-      values.username &&
-      values.fullName &&
-      values.bio &&
-      selectedLocation && // Check selectedLocation instead of values.location
-      !isUsernameTaken &&
-      isValid &&
-      (!isWalletLogin || (isWalletLogin && emailLinked)) // Only require email to be linked for wallet login
-    );
+    validateFormFields();
+  }, [
+    form,
+    selectedLocation,
+    isUsernameTaken,
+    emailLinked,
+    isWalletLogin,
+    isFormComplete
+  ]);
 
-    setIsFormComplete(isComplete);
-  };
-
-  // Update location in form when selectedLocation changes
+  // Modify location effect to not trigger validation
   useEffect(() => {
     if (selectedLocation) {
       form.setValue('location', selectedLocation, {
@@ -220,8 +228,16 @@ const OnboardingPage: React.FC = () => {
         shouldDirty: true,
       });
     }
-    validateForm(); // Call validateForm after location update
-  }, [selectedLocation, emailLinked]); // Add emailLinked as dependency
+  }, [selectedLocation]);
+
+  // Modify form watch effect
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      // Let the validation useEffect handle the form state
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   useEffect(() => {
     // Set email in form if user logged in with email

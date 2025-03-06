@@ -53,15 +53,15 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
   const handleLinkEmail = async () => {
     setLinkingEmail(true);
     setLinkEmailError(null);
-    const currentLocation = selectedLocation; // Use prop instead of form value
+    const currentLocation = selectedLocation;
     
     try {
       await linkEmail();
-      // Ensure location persists
       if (currentLocation) {
-        setValue('location', currentLocation);
+        setValue('location', currentLocation, { shouldValidate: false });
         setSelectedLocation(currentLocation);
       }
+      onEmailLinkingChange(true);
     } catch (error) {
       setLinkEmailError('Failed to link email. Please try again.');
       onEmailLinkingChange(false);
