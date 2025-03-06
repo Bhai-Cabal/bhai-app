@@ -89,4 +89,9 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
+  /* Add smooth scrolling to html */
+  html {
+    scroll-behavior: smooth;
+  }
 }

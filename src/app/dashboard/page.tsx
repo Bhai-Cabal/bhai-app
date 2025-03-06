@@ -333,21 +333,32 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] mt-16 md:mt-0 px-2 sm:px-6 py-2 sm:py-3 mb-16 md:mb-0">
+    <div className="max-w-[2000px] mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="h-full"
       >
         <Tabs defaultValue="map" className="h-full flex flex-col">
-          {/* Profile and Tabs Section */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
-            {/* Profile Section - No changes */}
-            <motion.div className="flex items-center gap-4 w-full md:w-auto">
-              {/* ...existing profile code... */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 mb-6 sm:mb-8 sticky top-0 bg-background/80 backdrop-blur-sm z-10 py-2">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-4 w-full md:w-auto"
+            >
+              <div className="relative group">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-full blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
+                <Avatar className="h-14 w-14 ring-2 ring-background relative">
+                  <AvatarImage src={profileAvatarUrl} />
+                  <AvatarFallback>{profile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                </Avatar>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Welcome back, {profile?.full_name?.split(' ')[0]}</h1>
+                <p className="text-sm text-muted-foreground">Here's what's happening in your network</p>
+              </div>
             </motion.div>
             
-            {/* Tabs Section - Updated for mobile scrolling */}
             <motion.div className="w-full md:w-auto">
               <div className="overflow-auto scrollbar-none -mx-2 px-2">
                 <TabsList className="w-[500px] md:w-auto h-12 sm:h-14 p-1 sm:p-1.5 bg-background/80 backdrop-blur-xl border rounded-xl sm:rounded-2xl inline-flex whitespace-nowrap">
@@ -378,8 +389,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Content Section */}
-          <div className="flex-1 overflow-hidden">
-            <TabsContent value="map" className="flex-1 h-[calc(100vh-10rem)] overflow-hidden rounded-xl border bg-card">
+          <div className="flex-1 min-h-0">
+            <TabsContent value="map" className="h-[70vh] md:h-[80vh] overflow-hidden rounded-xl border bg-card">
               <div className="h-full relative">
                 <div className="absolute bottom-4 left-4 z-10 bg-background/50 backdrop-blur-sm p-3 rounded-lg border">
                   <h3 className="text-sm font-medium mb-1">Global Network</h3>
@@ -394,90 +405,92 @@ export default function DashboardPage() {
               </div>
             </TabsContent>
 
-            <TabsContent value="overview" className="flex-1 h-[calc(100vh-10rem)] overflow-y-auto space-y-6 pr-4">
-              {/* Profile Card */}
-              <Card className="p-6">
-                <div className="flex items-start space-x-4">
-                  <Avatar className="h-20 w-20">
-                    <AvatarImage src={profileAvatarUrl} />
-                    <AvatarFallback>{profile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-2 flex-1">
-                    <h2 className="text-2xl font-bold">{profile?.full_name}</h2>
-                    <p className="text-muted-foreground">{profile?.bio}</p>
-                    <div className="flex space-x-4">
-                      <div>
-                        <p className="text-sm font-medium">Member since</p>
-                        <p className="text-muted-foreground">{profile?.crypto_entry_date}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Location</p>
-                        <p className="text-muted-foreground">
-                          {profile?.location ? formatLocation(profile.location) : 'No location set'}
-                        </p>
+            <TabsContent value="overview" className="space-y-6">
+              <div className="grid gap-6">
+                {/* Profile Card */}
+                <Card className="p-6">
+                  <div className="flex items-start space-x-4">
+                    <Avatar className="h-20 w-20">
+                      <AvatarImage src={profileAvatarUrl} />
+                      <AvatarFallback>{profile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="space-y-2 flex-1">
+                      <h2 className="text-2xl font-bold">{profile?.full_name}</h2>
+                      <p className="text-muted-foreground">{profile?.bio}</p>
+                      <div className="flex space-x-4">
+                        <div>
+                          <p className="text-sm font-medium">Member since</p>
+                          <p className="text-muted-foreground">{profile?.crypto_entry_date}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Location</p>
+                          <p className="text-muted-foreground">
+                            {profile?.location ? formatLocation(profile.location) : 'No location set'}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  <div className="mt-6 grid grid-cols-3 gap-4">
+                    <Card className="p-4 bg-secondary">
+                      <p className="text-sm font-medium">Profile Completion</p>
+                      <Progress value={profile?.profile_completion_percentage} className="my-2" />
+                      <p className="text-xs text-muted-foreground">{profile?.profile_completion_percentage}% Complete</p>
+                    </Card>
+                    
+                    <Card className="p-4 bg-secondary">
+                      <p className="text-sm font-medium">BQ Score</p>
+                      <h3 className="text-2xl font-bold mt-2">{profile?.bq_score}</h3>
+                      <p className="text-xs text-muted-foreground">Top {(profile?.bq_score ?? 0) > 80 ? '20%' : '50%'}</p>
+                    </Card>
+
+                    <Card className="p-4 bg-secondary">
+                      <p className="text-sm font-medium">Current Tier</p>
+                      <h3 className="text-2xl font-bold mt-2 capitalize">{profile?.current_tier}</h3>
+                      <p className="text-xs text-muted-foreground">3 days to next tier</p>
+                    </Card>
+                  </div>
+                </Card>
+
+                {/* Stats Grid */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  <Card className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-medium">Total Members</h3>
+                    </div>
+                    <p className="text-2xl font-bold mt-2">{stats.totalUsers}</p>
+                  </Card>
+
+                  <Card className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-medium">Companies</h3>
+                    </div>
+                    <p className="text-2xl font-bold mt-2">{stats.totalCompanies}</p>
+                  </Card>
+
+                  <Card className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <Briefcase className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-medium">Available Roles</h3>
+                    </div>
+                    <p className="text-2xl font-bold mt-2">{stats.totalRoles}</p>
+                  </Card>
+
+                  <Card className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <Activity className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-medium">Your Connections</h3>
+                    </div>
+                    <p className="text-2xl font-bold mt-2">{stats.yourConnections}</p>
+                  </Card>
                 </div>
-
-                <div className="mt-6 grid grid-cols-3 gap-4">
-                  <Card className="p-4 bg-secondary">
-                    <p className="text-sm font-medium">Profile Completion</p>
-                    <Progress value={profile?.profile_completion_percentage} className="my-2" />
-                    <p className="text-xs text-muted-foreground">{profile?.profile_completion_percentage}% Complete</p>
-                  </Card>
-                  
-                  <Card className="p-4 bg-secondary">
-                    <p className="text-sm font-medium">BQ Score</p>
-                    <h3 className="text-2xl font-bold mt-2">{profile?.bq_score}</h3>
-                    <p className="text-xs text-muted-foreground">Top {(profile?.bq_score ?? 0) > 80 ? '20%' : '50%'}</p>
-                  </Card>
-
-                  <Card className="p-4 bg-secondary">
-                    <p className="text-sm font-medium">Current Tier</p>
-                    <h3 className="text-2xl font-bold mt-2 capitalize">{profile?.current_tier}</h3>
-                    <p className="text-xs text-muted-foreground">3 days to next tier</p>
-                  </Card>
-                </div>
-              </Card>
-
-              {/* Stats Grid */}
-              <div className="grid gap-4 md:grid-cols-4">
-                <Card className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="text-sm font-medium">Total Members</h3>
-                  </div>
-                  <p className="text-2xl font-bold mt-2">{stats.totalUsers}</p>
-                </Card>
-
-                <Card className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="text-sm font-medium">Companies</h3>
-                  </div>
-                  <p className="text-2xl font-bold mt-2">{stats.totalCompanies}</p>
-                </Card>
-
-                <Card className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Briefcase className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="text-sm font-medium">Available Roles</h3>
-                  </div>
-                  <p className="text-2xl font-bold mt-2">{stats.totalRoles}</p>
-                </Card>
-
-                <Card className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Activity className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="text-sm font-medium">Your Connections</h3>
-                  </div>
-                  <p className="text-2xl font-bold mt-2">{stats.yourConnections}</p>
-                </Card>
               </div>
             </TabsContent>
 
-            <TabsContent value="analytics" className="flex-1 h-[calc(100vh-10rem)] overflow-y-auto space-y-6 pr-4">
+            <TabsContent value="analytics" className="space-y-6">
               <Card className="p-6">
                 <h3 className="text-lg font-semibold mb-4">Engagement Trends</h3>
                 <div className="h-[300px]">
@@ -506,7 +519,7 @@ export default function DashboardPage() {
               </div>
             </TabsContent>
 
-            <TabsContent value="activity" className="flex-1 h-[calc(100vh-10rem)] overflow-y-auto space-y-6 pr-4">
+            <TabsContent value="activity" className="space-y-6">
               <Card className="p-6">
                 <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
                 <div className="space-y-4">

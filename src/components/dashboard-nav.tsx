@@ -134,7 +134,7 @@ export function DashboardNav({ onCollapse, defaultCollapsed = false, className }
 
   return (
     <>
-      {/* Mobile Nav */}
+      {/* Mobile Bottom Nav */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden">
         <nav className="flex justify-around items-center h-16 px-2">
           {navItems.map((item) => (
@@ -234,9 +234,8 @@ export function DashboardNav({ onCollapse, defaultCollapsed = false, className }
           </div>
         </div>
 
-        {/* Bottom section - Updated */}
-        <div className="space-y-4 p-6">
-          {/* Theme and Invite buttons */}
+        {/* Bottom section - Fixed to bottom */}
+        <div className="sticky bottom-0 p-6 border-t bg-background/80 backdrop-blur-sm">
           <div className={cn(
             "flex gap-2 mb-4",
             isCollapsed ? "flex-col items-center" : "items-center"
@@ -252,9 +251,6 @@ export function DashboardNav({ onCollapse, defaultCollapsed = false, className }
             </Button>
           </div>
 
-          {/* Border separator */}
-          <div className="border-t border-border/40 mb-4" />
-
           {/* Account button */}
           <Button
             variant="ghost"
@@ -263,7 +259,6 @@ export function DashboardNav({ onCollapse, defaultCollapsed = false, className }
               "w-full transition-all duration-200 hover:bg-accent/50",
               isCollapsed ? "px-2 justify-center" : "px-4 justify-start gap-3"
             )}
-            title={isCollapsed ? "Account" : undefined}
           >
             {profilePictureUrl ? (
               <Avatar className={cn("h-8 w-8 ring-2 ring-border", isCollapsed && "mx-auto")}>
@@ -289,12 +284,12 @@ export function DashboardNav({ onCollapse, defaultCollapsed = false, className }
             </AnimatePresence>
           </Button>
         </div>
-
-        <AccountDialog
-          open={accountDialogOpen}
-          onClose={() => setAccountDialogOpen(false)}
-        />
       </div>
+
+      <AccountDialog
+        open={accountDialogOpen}
+        onClose={() => setAccountDialogOpen(false)}
+      />
     </>
   );
 }

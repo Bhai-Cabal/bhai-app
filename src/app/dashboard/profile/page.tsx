@@ -947,7 +947,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
+    <div className="max-w-4xl mx-auto p-4 ">
       {profileCompletion < 100 && (
         <div className="mb-8">
           <div className="bg-background rounded-lg p-6 border">
