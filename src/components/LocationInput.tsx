@@ -25,6 +25,7 @@ interface LocationResult {
   type: string;
   lat: string;
   lon: string;
+  uniqueId?: string; // Add this new property
 }
 
 const DEBOUNCE_DELAY = 300;
@@ -50,29 +51,81 @@ export const LocationInput: React.FC<LocationInputProps> = ({
     setDisplayValue(selectedLocation || '');
   }, [selectedLocation]);
 
+  const formatLocationName = (props: LocationResult['properties']): string => {
+    const parts = [];
+    const city = props.city?.trim();
+    const state = props.state?.trim();
+    const country = props.country?.trim();
+
+    // Add parts only if they're unique
+    if (city) parts.push(city);
+    if (state && state !== city) parts.push(state);
+    if (country && country !== state) parts.push(country);
+    
+    return parts.join(', ');
+  };
+
   const handleSearch = useCallback(async () => {
-    if (query.length < 2) return;
+    if (query.length < 2) {
+      setResults([]);
+      return;
+    }
     
     try {
       const response = await fetch(
-        `${PHOTON_API_URL}?q=${encodeURIComponent(query)}&limit=5`
+        `${PHOTON_API_URL}?q=${encodeURIComponent(query)}&limit=15`
       );
-      const data = await response.json();
       
-      const filteredResults = data.features
+      if (!response.ok) throw new Error('Network response was not ok');
+
+      const data = await response.json();
+      const seenNames = new Set<string>();
+      const processedResults: LocationResult[] = [];
+      
+      data.features
         .filter((feature: LocationResult) => {
           const props = feature.properties;
           return props.city || props.state || props.country;
         })
-        .map((feature: LocationResult) => ({
-          place_id: `${feature.geometry.coordinates[0]}-${feature.geometry.coordinates[1]}`,
-          display_name: formatLocationName(feature.properties),
-          type: getLocationType(feature.properties),
-          lat: feature.geometry.coordinates[1].toString(),
-          lon: feature.geometry.coordinates[0].toString()
-        }));
+        .forEach((feature: LocationResult) => {
+          const displayName = formatLocationName(feature.properties);
+          const coords = feature.geometry.coordinates;
+          
+          // Skip empty or duplicate names
+          if (!displayName || seenNames.has(displayName.toLowerCase())) {
+            return;
+          }
 
-      setResults(filteredResults);
+          // Prioritize exact matches and shorter names
+          const isExactMatch = displayName.toLowerCase().includes(query.toLowerCase());
+          const priority = isExactMatch ? 0 : displayName.length;
+
+          processedResults.push({
+            place_id: `location-${Date.now()}-${Math.random()}`,
+            uniqueId: `${displayName}-${coords[0]}-${coords[1]}`,
+            display_name: displayName,
+            type: getLocationType(feature.properties),
+            lat: coords[1].toString(),
+            lon: coords[0].toString(),
+            properties: feature.properties,
+            geometry: feature.geometry
+          });
+
+          seenNames.add(displayName.toLowerCase());
+        });
+
+      // Sort results by priority and limit to 5 items
+      setResults(
+        processedResults
+          .sort((a, b) => {
+            const aExact = a.display_name.toLowerCase().includes(query.toLowerCase());
+            const bExact = b.display_name.toLowerCase().includes(query.toLowerCase());
+            if (aExact && !bExact) return -1;
+            if (!aExact && bExact) return 1;
+            return a.display_name.length - b.display_name.length;
+          })
+          .slice(0, 5)
+      );
     } catch (error) {
       console.error('Error fetching locations:', error);
       setResults([]);
@@ -108,14 +161,6 @@ export const LocationInput: React.FC<LocationInputProps> = ({
     };
   }, []);
 
-  const formatLocationName = (props: LocationResult['properties']): string => {
-    const parts = [];
-    if (props.city) parts.push(props.city);
-    if (props.state) parts.push(props.state);
-    if (props.country) parts.push(props.country);
-    return parts.join(', ');
-  };
-
   const getLocationType = (props: LocationResult['properties']): string => {
     if (props.city) return 'city';
     if (props.state) return 'state';
@@ -124,15 +169,20 @@ export const LocationInput: React.FC<LocationInputProps> = ({
   };
 
   const handleSelect = (result: LocationResult) => {
-    const locationData = {
-      display_name: result.display_name,
-      lat: parseFloat(result.lat),
-      lng: parseFloat(result.lon)
-    };
-    setDisplayValue(result.display_name);
-    setSelectedLocation(JSON.stringify(locationData));
-    setResults([]);
-    setIsInputFocused(false);
+    try {
+      const locationData = {
+        display_name: result.display_name,
+        lat: parseFloat(result.lat),
+        lng: parseFloat(result.lon)
+      };
+      setDisplayValue(result.display_name);
+      setSelectedLocation(JSON.stringify(locationData));
+      setResults([]);
+      setIsInputFocused(false);
+      setQuery(result.display_name);
+    } catch (error) {
+      console.error('Error selecting location:', error);
+    }
   };
 
   return (
@@ -141,8 +191,12 @@ export const LocationInput: React.FC<LocationInputProps> = ({
         type="text"
         value={displayValue}
         onChange={(e) => {
-          setDisplayValue(e.target.value);
-          setQuery(e.target.value);
+          const value = e.target.value;
+          setDisplayValue(value);
+          setQuery(value);
+          if (!value) {
+            setResults([]);
+          }
         }}
         placeholder="Enter a location"
         className={cn(
@@ -156,7 +210,7 @@ export const LocationInput: React.FC<LocationInputProps> = ({
         <div className="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg dark:bg-black dark:border-gray-700 max-h-60 overflow-y-auto">
           {results.map((result) => (
             <div
-              key={result.place_id}
+              key={result.uniqueId || result.place_id} // Use uniqueId as primary key
               className="p-3 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white flex flex-col"
               onClick={() => handleSelect(result)}
             >
