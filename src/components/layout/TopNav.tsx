@@ -54,7 +54,8 @@ export function TopNav({ className }: TopNavProps) {
       className
     )}>
       <div className="flex h-16 items-center justify-between px-4">
-        <div className="font-semibold bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent">
+        <div className="flex flex-row gap-2 font-semibold bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent">
+        <img className="w-8 h-8 rounded-xl border" src="/bhai-cabal.jpg" ></img>
           Bhai Cabal
         </div>
 

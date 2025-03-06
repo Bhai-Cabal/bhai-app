@@ -176,7 +176,8 @@ export function DashboardNav({ onCollapse, defaultCollapsed = false, className }
                   exit={{ opacity: 0, x: -20 }}
                   className="text-xl font-bold bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent"
                 >
-                  <Link href="/" className=" text-nowrap">
+                  <Link href="/" className="flex flex-row gap-2 text-nowrap">
+                    <img className="w-8 h-8 rounded-xl border" src="/bhai-cabal.jpg" ></img>
                     Bhai Cabal
                   </Link>
                 </motion.div>

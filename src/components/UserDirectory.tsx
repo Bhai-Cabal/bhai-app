@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/lib/supabase";
-import { Search, X } from "lucide-react";
+import { Search, X, Building2, Link2, Wallet } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { parseLocationString } from '@/lib/locationParser';
+import { Separator } from '@/components/ui/separator';
 
 interface User {
   id: string;
@@ -376,7 +377,6 @@ export function UserDirectory() {
   };
 
   const UserCard = ({ user }: { user: User }) => {
-    // Parse location to get display name
     const locationDisplay = user.location ? 
       parseLocationString(user.location)?.display_name : 
       'No location set';
@@ -384,7 +384,7 @@ export function UserDirectory() {
     return (
       <Dialog>
         <DialogTrigger asChild>
-          <Card className="p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">
+          <Card className="p-4 cursor-pointer hover:bg-accent/50 transition-colors">
             <div className="flex items-start space-x-4">
               <Avatar>
                 {user.profile_picture_url ? (
@@ -405,68 +405,125 @@ export function UserDirectory() {
             </div>
           </Card>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogTitle className="sr-only">User Details</DialogTitle>
-          <DialogClose className="p-2 absolute right-2 top-2" />
-          <div className="p-4 space-y-4">
-            <h3 className="font-bold text-lg">{user.full_name}</h3>
-            <p>
-              <span className="font-medium">Bio:</span> {user.bio}
-            </p>
-            <p>
-              <span className="font-medium">Location:</span> {locationDisplay}
-            </p>
-            <div>
-              <span className="font-medium">Skills:</span>
-              <ul className="list-disc list-inside">
-                {(user.skills ?? []).length > 0 ? (
-                  (user.skills ?? []).map((skill) => (
-                    <li key={skill.id}>{skill.name}</li>
-                  ))
-                ) : (
-                  <li>No skills added.</li>
-                )}
-              </ul>
+        <DialogContent className="sm:max-w-[600px] p-0">
+          <div className="relative">
+            <div className="p-6 pb-16 bg-gradient-to-b from-primary/10 to-background">
+              <DialogTitle className="flex items-center gap-4">
+                <Avatar className="h-20 w-20 border-4 border-background">
+                  {user.profile_picture_url ? (
+                    <img
+                      src={user.profile_picture_url}
+                      alt={user.full_name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <AvatarFallback className="text-2xl">{user.full_name.charAt(0)}</AvatarFallback>
+                  )}
+                </Avatar>
+                <div>
+                  <h2 className="text-2xl font-bold">{user.full_name}</h2>
+                  <p className="text-muted-foreground">@{user.username}</p>
+                </div>
+              </DialogTitle>
             </div>
-            <div>
-              <span className="font-medium">Roles:</span>
-              <ul className="list-disc list-inside">
-                {user.roles && user.roles.length > 0 ? (
-                  user.roles?.map((role) => (
-                    <li key={role.id}>{role.name}</li>
-                  ))
-                ) : (
-                  <li>No roles added.</li>
-                )}
-              </ul>
-            </div>
-            <div>
-              <span className="font-medium">Companies:</span>
-              <ul className="list-disc list-inside">
-                {(user.companies ?? []).length > 0 ? (
-                  user.companies?.map((company, index) => (
-                    <li key={index}>
-                      {company.role} at {company.name}
-                    </li>
-                  ))
-                ) : (
-                  <li>No companies added.</li>
-                )}
-              </ul>
-            </div>
-            <div>
-              <span className="font-medium">Wallet Addresses:</span>
-              <ul className="list-disc list-inside">
-                {user.wallet_addresses?.length > 0 ? (
-                  user.wallet_addresses.map((wallet, index) => (
-                    <li key={index}>
-                      {wallet.blockchain}: {wallet.address}
-                    </li>
-                  ))
-                ) : (
-                  <li>No wallet addresses added.</li>
-                )}
-              </ul>
+            <div className="px-6 -mt-8">
+              <Card className="p-6">
+                <div className="space-y-6">
+                  {user.bio && (
+                    <div>
+                      <p className="text-sm leading-relaxed">{user.bio}</p>
+                      <Separator className="my-4" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <Badge variant="secondary">{locationDisplay}</Badge>
+                  </div>
+                  {user.skills && user.skills.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-medium">Skills</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {user.skills.map((skill) => (
+                          <Badge key={skill.id} variant="outline">
+                            {skill.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {user.roles && user.roles.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-medium">Roles</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {user.roles.map((role) => (
+                          <Badge key={role.id} className="bg-primary/10 text-primary border-primary/20">
+                            {role.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {user.companies && user.companies.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-medium flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Work Experience
+                      </h3>
+                      <div className="space-y-2">
+                        {user.companies.map((company, index) => (
+                          <div key={index} className="text-sm">
+                            <p className="font-medium">{company.role}</p>
+                            <p className="text-muted-foreground">{company.name}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {user.digital_identities && user.digital_identities.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-medium flex items-center gap-2">
+                        <Link2 className="h-4 w-4" />
+                        Digital Presence
+                      </h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {user.digital_identities.map((identity, index) => (
+                          <a
+                            key={index}
+                            href={`https://${identity.platform.toLowerCase()}.com/${identity.identifier}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-sm hover:text-primary transition-colors overflow-hidden"
+                          >
+                            <Badge variant="outline" className="text-xs">
+                              {identity.platform}
+                            </Badge>
+                            {identity.identifier}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {user.wallet_addresses && user.wallet_addresses.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-medium flex items-center gap-2">
+                        <Wallet className="h-4 w-4" />
+                        Wallet Addresses
+                      </h3>
+                      <div className="space-y-2">
+                        {user.wallet_addresses.map((wallet, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {wallet.blockchain}
+                            </Badge>
+                            <code className="text-xs text-muted-foreground">
+                              {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
+                            </code>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
             </div>
           </div>
         </DialogContent>
