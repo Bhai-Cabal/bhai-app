@@ -112,30 +112,29 @@ const OnboardingPage: React.FC = () => {
 
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const isValid = await form.trigger();
     
-    if (!isValid || !isFormComplete) {
-      const errors = form.formState.errors;
-      if (Object.keys(errors).length > 0) {
-        setError("Please fill in all required fields correctly.");
-        return;
-      }
-      // Separate check for email linking
-      if (isWalletLogin && !emailLinked) {
-        setError("Please link your email address to continue.");
-        return;
-      }
-      // Check location separately
-      if (!selectedLocation) {
-        setError("Please select a location.");
-        return;
-      }
-    }
-
-    setIsLoading(true);
-    setError(null);
-
     try {
+      // Trigger validation for all fields
+      const validationResult = await form.trigger();
+      
+      if (!validationResult) {
+        setError("Please fix the validation errors before submitting.");
+        return;
+      }
+
+      if (!isFormComplete) {
+        setError("Please complete all required fields.");
+        return;
+      }
+
+      if (isWalletLogin && !emailLinked) {
+        setError("Please link your email address before continuing.");
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
       const values = form.getValues();
       const userUUID = uuid();
       let profilePicturePath: string | null = null; // Declare the variable here
@@ -189,35 +188,59 @@ const OnboardingPage: React.FC = () => {
   const userEmail = user?.email?.address ?? null;
   const isWalletLogin = !userEmail && user?.wallet; // Check if user has a wallet but no email
 
-  // Separate useEffect for form validation
+  // Replace the form validation useEffect with this improved version
   useEffect(() => {
     const validateFormFields = async () => {
       const values = form.getValues();
-      const isValid = await form.trigger();
+      const formErrors = form.formState.errors;
+      
+      // Check each required field individually
+      const hasUsername = !!values.username && !isUsernameTaken;
+      const hasFullName = !!values.fullName && values.fullName.length >= 2;
+      const hasBio = !!values.bio && values.bio.length >= 10;
+      const hasLocation = !!selectedLocation;
+      const hasValidEmail = !isWalletLogin || (isWalletLogin && emailLinked);
+      
+      // Check for any validation errors
+      const hasNoErrors = Object.keys(formErrors).length === 0;
 
-      const isComplete = !!(
-        values.username &&
-        values.fullName &&
-        values.bio &&
-        selectedLocation &&
-        !isUsernameTaken &&
-        isValid &&
-        (!isWalletLogin || (isWalletLogin && emailLinked))
-      );
+      // All conditions must be true for the form to be complete
+      const isComplete = hasUsername &&
+        hasFullName &&
+        hasBio &&
+        hasLocation &&
+        hasValidEmail &&
+        hasNoErrors;
 
-      if (isComplete !== isFormComplete) {
-        setIsFormComplete(isComplete);
+      setIsFormComplete(isComplete);
+
+      // Update form error message if needed
+      if (!isComplete) {
+        let errorMessage = '';
+        if (!hasUsername) errorMessage = isUsernameTaken ? 'Username is already taken' : 'Valid username required';
+        else if (!hasFullName) errorMessage = 'Full name required';
+        else if (!hasBio) errorMessage = 'Bio should be at least 10 characters';
+        else if (!hasLocation) errorMessage = 'Location required';
+        else if (!hasValidEmail) errorMessage = 'Email linking required';
+        
+        setError(errorMessage || 'Please complete all required fields');
+      } else {
+        setError(null);
       }
     };
 
-    validateFormFields();
+    // Run validation when any relevant state changes
+    const subscription = form.watch(() => {
+      validateFormFields();
+    });
+
+    return () => subscription.unsubscribe();
   }, [
     form,
     selectedLocation,
     isUsernameTaken,
     emailLinked,
-    isWalletLogin,
-    isFormComplete
+    isWalletLogin
   ]);
 
   // Modify location effect to not trigger validation

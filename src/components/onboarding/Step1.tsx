@@ -131,7 +131,9 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         control={control}
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-base sm:text-lg font-medium">Username</FormLabel>
+            <FormLabel className="text-base sm:text-lg font-medium">
+              Username <span className="text-destructive">*</span>
+            </FormLabel>
             <FormDescription className="text-sm text-muted-foreground mb-2">
               Choose a unique username that will identify you on the platform
             </FormDescription>
@@ -164,7 +166,9 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         control={control}
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-base sm:text-lg">Full Name</FormLabel>
+            <FormLabel className="text-base sm:text-lg">
+              Full Name <span className="text-destructive">*</span>
+            </FormLabel>
             <FormDescription className="text-sm sm:text-base">
               Enter your full name as you'd like it to appear on your profile
             </FormDescription>
@@ -189,7 +193,9 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         control={control}
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-base sm:text-lg">Bio</FormLabel>
+            <FormLabel className="text-base sm:text-lg">
+              Bio <span className="text-destructive">*</span>
+            </FormLabel>
             <FormDescription className="text-sm sm:text-base">
               Tell us about yourself (maximum 500 characters)
             </FormDescription>
@@ -215,7 +221,9 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         rules={{ required: "Location is required" }}
         render={({ field }) => (
           <FormItem className="flex flex-col">
-            <FormLabel className="text-base sm:text-lg">Location</FormLabel>
+            <FormLabel className="text-base sm:text-lg">
+              Location <span className="text-destructive">*</span>
+            </FormLabel>
             <FormDescription className="text-sm sm:text-base">
               Start typing to get location suggestions
             </FormDescription>
@@ -238,7 +246,9 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
         control={control}
         render={({ field: { value, onChange, ...field } }) => (
           <FormItem>
-            <FormLabel className="text-base sm:text-lg font-medium">Profile Picture</FormLabel>
+            <FormLabel className="text-base sm:text-lg font-medium">
+              Profile Picture <span className="text-muted-foreground text-sm">(Optional)</span>
+            </FormLabel>
             <FormDescription className="text-sm mb-2">
               Upload a profile picture (max 5MB, .jpg, .png, .webp)
             </FormDescription>
@@ -265,6 +275,10 @@ const Step1: React.FC<Step1Props> = ({ isUsernameTaken, handleUsernameChange, ha
           </FormItem>
         )}
       />
+      
+      <div className="text-sm text-muted-foreground mt-4">
+        <span className="text-destructive">*</span> Required fields
+      </div>
     </div>
   );
 };
