@@ -48,7 +48,7 @@ export default function DashboardLayout({
       <TopNav className="md:hidden" /> {/* Mobile top navigation */}
       <DashboardNav className="hidden md:block" /> {/* Desktop side navigation */}
       <div
-        className={`transition-all duration-300 ease-in-out min-h-screen ${
+        className={`transition-all duration-300 ease-in-out min-h-screen mb-20 ${
           isSidebarCollapsed 
             ? "ml-0 md:ml-20" 
             : "ml-0 md:ml-72"
