@@ -209,84 +209,86 @@ const Step4: React.FC<Step4Props> = ({
 
       <div className="space-y-4">
         {watch('digitalIdentities').map((identity: { platform: string; identifier: string }, index: number) => (
-          <div key={index} className="flex gap-4 items-start">
-            <Controller
-              name={`digitalIdentities.${index}.platform`}
-              control={control}
-              render={({ field }) => (
-                <FormItem className="w-[200px]">
-                  <FormControl>
-                    <Select
-                      onValueChange={(value: string) => handlePlatformChange(index, value)}
-                      value={field.value}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select platform">
-                          {field.value ? field.value.charAt(0).toUpperCase() + field.value.slice(1) : ''}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availablePlatforms.map((platform: string) => (
-                          <SelectItem key={platform} value={platform.toLowerCase()}>
-                            {platform}
-                          </SelectItem>
-                        ))}
-                        <div className="py-2">
-                          <Input
-                            placeholder="Add new platform"
-                            value={newPlatform}
-                            onChange={(e) => setNewPlatform(e.target.value)}
-                            className="text-lg p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary dark:bg-black dark:border-gray-700 dark:text-white"
-                          />
-                        </div>
-                        {newPlatform && (
-                          <SelectItem key="new-platform" value={`new-${newPlatform}`}>
-                            Add "{newPlatform}"
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage>{(errors.digitalIdentities as any)?.[index]?.platform?.message}</FormMessage>
-                </FormItem>
+          <div key={index} className="flex flex-col gap-4 items-start md:flex-row">
+        <Controller
+          name={`digitalIdentities.${index}.platform`}
+          control={control}
+          render={({ field }) => (
+            <FormItem className="w-full md:w-[200px]">
+          <FormControl>
+            <Select
+              onValueChange={(value: string) => handlePlatformChange(index, value)}
+              value={field.value}
+            >
+              <SelectTrigger>
+            <SelectValue placeholder="Select platform">
+              {field.value ? field.value.charAt(0).toUpperCase() + field.value.slice(1) : ''}
+            </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+            {availablePlatforms.map((platform: string) => (
+              <SelectItem key={platform} value={platform.toLowerCase()}>
+                {platform}
+              </SelectItem>
+            ))}
+            <div className="py-2">
+              <Input
+                placeholder="Add new platform"
+                value={newPlatform}
+                onChange={(e) => setNewPlatform(e.target.value)}
+                className="text-lg p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary dark:bg-black dark:border-gray-700 dark:text-white"
+              />
+            </div>
+            {newPlatform && (
+              <SelectItem key="new-platform" value={`new-${newPlatform}`}>
+                Add "{newPlatform}"
+              </SelectItem>
+            )}
+              </SelectContent>
+            </Select>
+          </FormControl>
+          <FormMessage>{(errors.digitalIdentities as any)?.[index]?.platform?.message}</FormMessage>
+            </FormItem>
+          )}
+        />
+        <div className="flex w-full gap-4 items-start">
+          <Controller
+            name={`digitalIdentities.${index}.identifier`}
+            control={control}
+            render={({ field }) => (
+          <FormItem className="flex-1">
+            <FormControl>
+              <Input
+            placeholder="Enter your profile link"
+            {...field}
+            className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
+            onChange={async (e) => {
+              field.onChange(e);
+              const platform = watch(`digitalIdentities.${index}.platform`);
+              if (platform && e.target.value) {
+                const exists = await checkDigitalIdentityExists(platform, e.target.value);
+                if (exists) {
+              setIdentityValidationError(`This ${platform} identity is already registered`);
+                } else {
+              setIdentityValidationError('');
+                }
+              }
+            }}
+              />
+            </FormControl>
+            <FormMessage>
+              {(errors.digitalIdentities as any)?.[index]?.identifier?.message}
+              {identityValidationError && (
+            <span className="text-red-500 text-sm">{identityValidationError}</span>
               )}
-            />
-            <Controller
-              name={`digitalIdentities.${index}.identifier`}
-              control={control}
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormControl>
-                    <Input
-                      placeholder="Enter your profile link"
-                      {...field}
-                      className="text-lg p-3 dark:bg-black dark:border-gray-700 dark:text-white"
-                      onChange={async (e) => {
-                        field.onChange(e);
-                        const platform = watch(`digitalIdentities.${index}.platform`);
-                        if (platform && e.target.value) {
-                          const exists = await checkDigitalIdentityExists(platform, e.target.value);
-                          if (exists) {
-                            setIdentityValidationError(`This ${platform} identity is already registered`);
-                          } else {
-                            setIdentityValidationError('');
-                          }
-                        }
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage>
-                    {(errors.digitalIdentities as any)?.[index]?.identifier?.message}
-                    {identityValidationError && (
-                      <span className="text-red-500 text-sm">{identityValidationError}</span>
-                    )}
-                  </FormMessage>
-                </FormItem>
-              )}
-            />
-            <Button type="button" variant="ghost" size="icon" onClick={() => removeIdentity(index)}>
-              <X className="h-4 w-4" />
-            </Button>
+            </FormMessage>
+          </FormItem>
+            )}
+          />
+          <Button type="button" variant="ghost" size="icon" onClick={() => removeIdentity(index)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
           </div>
         ))}
         <Button 
@@ -299,7 +301,7 @@ const Step4: React.FC<Step4Props> = ({
         </Button>
         {identityWarning && (
           <div className="text-red-600 text-sm">
-            {identityWarning}
+        {identityWarning}
           </div>
         )}
       </div>

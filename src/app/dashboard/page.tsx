@@ -390,10 +390,13 @@ export default function DashboardPage() {
 
           {/* Content Section */}
           <div className="flex-1 min-h-0">
-            <TabsContent value="map" className="h-[70vh] md:h-[80vh] overflow-hidden rounded-xl border bg-card">
+            <TabsContent 
+              value="map" 
+              className="h-[calc(100vh-16rem)] sm:h-[70vh] md:h-[80vh] overflow-hidden rounded-xl border bg-card"
+            >
               <div className="h-full relative">
-                <div className="absolute bottom-4 left-4 z-10 bg-background/50 backdrop-blur-sm p-3 rounded-lg border">
-                  <h3 className="text-sm font-medium mb-1">Global Network</h3>
+                <div className="absolute bottom-4 left-4 z-10 bg-background/80 backdrop-blur-sm p-3 rounded-lg border max-w-[200px] sm:max-w-none">
+                  <h3 className="text-sm font-medium mb-1 truncate">Global Network</h3>
                   <p className="text-xs text-muted-foreground">
                     {developers.length} members across {new Set(developers.map(d => d.location.country)).size} countries
                   </p>
